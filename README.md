@@ -67,6 +67,8 @@ uv run python list_okr_access.py
   - Default permissions not set to 'Comment'
   - Groups ending with '_F' without 'Full' access
   - Groups ending with '_W' without 'Write' access
+  - Item Keys not starting with 'OKR'
+  - Colors not in the valid set (yellow, orange, great, blue)
 
 ## Available Tools
 

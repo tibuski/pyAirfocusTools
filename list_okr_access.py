@@ -131,13 +131,20 @@ def format_workspace_access(
     # Detail indent uses spaces (not '..' prefix) - 2 spaces per depth level
     detail_indent = "  " * (depth + 1)
     
-    # First: Color
+    # First: Color - RED if not yellow, orange, great, or blue
     if item_color:
-        lines.append(f"{detail_indent}Color: {item_color}")
+        valid_colors = ['yellow', 'orange', 'great', 'blue']
+        color_display = item_color
+        if item_color not in valid_colors:
+            color_display = colorize(item_color, 'red')
+        lines.append(f"{detail_indent}Color: {color_display}")
     
-    # Second: Item Key
+    # Second: Item Key - RED if doesn't start with 'OKR'
     if item_key:
-        lines.append(f"{detail_indent}Item Key: {item_key}")
+        key_display = item_key
+        if not item_key.startswith('OKR'):
+            key_display = colorize(item_key, 'red')
+        lines.append(f"{detail_indent}Item Key: {key_display}")
     
     # Third: Access Rights - Add default permission if exists - RED if not 'comment'
     if default_permission:
