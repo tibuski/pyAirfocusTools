@@ -123,8 +123,8 @@ def format_workspace_access(
     group_permissions = embedded.get('userGroupPermissions', {})
     default_permission = workspace.get('defaultPermission')
     
-    # Detail indent is 2 spaces more than prefix
-    detail_indent = prefix + "  "
+    # Detail indent uses spaces (not '..' prefix) - 2 spaces per depth level
+    detail_indent = "  " * (depth + 1)
     
     # Add default permission if exists
     if default_permission:
