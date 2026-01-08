@@ -176,12 +176,16 @@ def format_workspace_access(
         if uid != current_user_id
     }
     
-    if user_perms_filtered and show_all:
+    if user_perms_filtered:
+        # Always show users section when there are users (it's a RED flag issue)
         lines.append(f"{detail_indent}Users:")
         for user_id, permission in sorted(user_perms_filtered.items()):
             user_name = get_username_from_id(user_id)
             perm_str = format_permission(permission)
-            lines.append(f"{detail_indent}  • {user_name}: {perm_str}")
+            # Users in workspaces should always appear in RED
+            user_line = f"{detail_indent}  • {user_name}: {perm_str}"
+            user_line = colorize(user_line, 'red')
+            lines.append(user_line)
     
     # Add group permissions after users
     if group_permissions:
