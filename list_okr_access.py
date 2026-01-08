@@ -123,9 +123,12 @@ def format_workspace_access(
     group_permissions = embedded.get('userGroupPermissions', {})
     default_permission = workspace.get('defaultPermission')
     
+    # Detail indent is 2 spaces more than prefix
+    detail_indent = prefix + "  "
+    
     # Add default permission if exists
     if default_permission:
-        lines.append(f"{tree_prefix}{continuation}    Default: {format_permission(default_permission)}")
+        lines.append(f"{detail_indent}Default: {format_permission(default_permission)}")
     
     # Add user permissions first (excluding current user)
     user_perms_filtered = {
@@ -134,19 +137,19 @@ def format_workspace_access(
     }
     
     if user_perms_filtered:
-        lines.append(f"{tree_prefix}{continuation}    Users:")
+        lines.append(f"{detail_indent}Users:")
         for user_id, permission in sorted(user_perms_filtered.items()):
             user_name = get_username_from_id(user_id)
             perm_str = format_permission(permission)
-            lines.append(f"{tree_prefix}{continuation}      • {user_name}: {perm_str}")
+            lines.append(f"{detail_indent}  • {user_name}: {perm_str}")
     
     # Add group permissions after users
     if group_permissions:
-        lines.append(f"{tree_prefix}{continuation}    Groups:")
+        lines.append(f"{detail_indent}Groups:")
         for group_id, permission in sorted(group_permissions.items()):
             group_name = get_groupname_from_id(group_id)
             perm_str = format_permission(permission)
-            lines.append(f"{tree_prefix}{continuation}      • {group_name}: {perm_str}")
+            lines.append(f"{detail_indent}  • {group_name}: {perm_str}")
     
     return lines
 
