@@ -3,7 +3,7 @@
 List all OKR workspaces with their access rights in a hierarchical view.
 
 This tool traverses the workspace hierarchy, identifies OKR-related workspaces,
-and displays their access permissions for users and groups.
+and displays their access permissions for users and user groups.
 """
 
 import argparse
@@ -14,7 +14,7 @@ from utils import (
     load_registries,
     make_api_request,
     get_username_from_id,
-    get_groupname_from_id,
+    get_usergroup_name,
     get_current_user_id,
     format_permission,
     build_workspace_hierarchy,
@@ -53,9 +53,12 @@ def is_okr_workspace(workspace: Dict[str, Any]) -> bool:
     return False
 
 
-def get_all_workspaces() -> List[Dict[str, Any]]:
+def get_all_workspaces(verify_ssl: bool = True) -> List[Dict[str, Any]]:
     """
     Retrieve all workspaces from the API.
+    
+    Args:
+        verify_ssl: Whether to verify SSL certificates (default: True)
     
     Returns:
         List of workspace objects
@@ -72,7 +75,8 @@ def get_all_workspaces() -> List[Dict[str, Any]]:
                 'archived': False,
                 'sort': {'type': 'name', 'direction': 'asc'}
             },
-            params={'offset': offset, 'limit': limit}
+            params={'offset': offset, 'limit': limit},
+            verify_ssl=verify_ssl
         )
         
         items = response.get('items', [])
@@ -132,8 +136,8 @@ def format_workspace_access(
     group_permissions = embedded.get('userGroupPermissions', {})
     default_permission = workspace.get('defaultPermission')
     
-    # Detail indent uses spaces (not '..' prefix) - 2 spaces per depth level
-    detail_indent = "  " * (depth + 1)
+    # Detail indent: ALL lines have dots - add one more level of dots for details
+    detail_indent = ".." * (depth + 1)
     
     # First: Color - RED whole line if not yellow, orange, great, or blue
     if item_color:
@@ -179,11 +183,13 @@ def format_workspace_access(
     if user_perms_filtered:
         # Always show users section when there are users (it's a RED flag issue)
         lines.append(f"{detail_indent}Users:")
+        # Sub-items get another level of dots
+        sub_indent = ".." * (depth + 2)
         for user_id, permission in sorted(user_perms_filtered.items()):
             user_name = get_username_from_id(user_id)
             perm_str = format_permission(permission)
             # Users in workspaces should always appear in RED
-            user_line = f"{detail_indent}  • {user_name}: {perm_str}"
+            user_line = f"{sub_indent}{user_name}: {perm_str}"
             user_line = colorize(user_line, 'red')
             lines.append(user_line)
     
@@ -192,8 +198,10 @@ def format_workspace_access(
         if show_all:
             lines.append(f"{detail_indent}Groups:")
         
+        # Sub-items get another level of dots
+        sub_indent = ".." * (depth + 2)
         for group_id, permission in sorted(group_permissions.items()):
-            group_name = get_groupname_from_id(group_id)
+            group_name = get_usergroup_name(group_id)
             perm_str = format_permission(permission)
             
             # Check if group name/permission mismatch - highlight in RED
@@ -214,7 +222,7 @@ def format_workspace_access(
                     # Add Groups header only when showing RED group for first time
                     if f"{detail_indent}Groups:" not in lines:
                         lines.append(f"{detail_indent}Groups:")
-                lines.append(f"{detail_indent}  • {group_name}: {perm_str}")
+                lines.append(f"{sub_indent}{group_name}: {perm_str}")
     
     return lines, has_red_flag
 
@@ -311,21 +319,28 @@ def main():
     parser.add_argument(
         '--all',
         action='store_true',
-        help='Include all workspaces, not just OKR workspaces'
+        help='Display all workspaces regardless of validation issues (default: only show workspaces with RED flags)'
+    )
+    parser.add_argument(
+        '--no-verify-ssl',
+        action='store_true',
+        help='Disable SSL certificate verification'
     )
     args = parser.parse_args()
     
-    print("Loading registries (users & groups)...")
-    load_registries()
+    verify_ssl = not args.no_verify_ssl
+    
+    print("Loading registries (users & user groups)...")
+    load_registries(verify_ssl=verify_ssl)
     
     print("Fetching workspaces...")
-    workspaces = get_all_workspaces()
+    workspaces = get_all_workspaces(verify_ssl=verify_ssl)
     
     print("Identifying current user...")
-    current_user_id = get_current_user_id()
+    current_user_id = get_current_user_id(verify_ssl=verify_ssl)
     
     print("Building hierarchy...")
-    hierarchy = build_workspace_hierarchy(workspaces)
+    hierarchy = build_workspace_hierarchy(workspaces, verify_ssl=verify_ssl)
     
     print("\n" + "="*60)
     print("OKR WORKSPACES ACCESS REPORT")
