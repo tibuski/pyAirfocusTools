@@ -62,7 +62,8 @@ uv run python list_okr_access.py
 - Displays workspace information in order: Color, Item Key, Access Rights
 - Resolves user and group IDs to human-readable names
 - Excludes the current authenticated user from the output
-- By default, shows only workspaces with validation issues (use --all to see everything)
+- By default, shows only workspaces with validation issues (workspace name + RED lines only)
+- Use --all flag to see complete details for all workspaces
 - RED highlighting (whole line) for:
   - Workspaces with direct user access (should use groups instead)
   - Default permissions not set to 'Comment'

@@ -76,7 +76,7 @@ Please initialize the project and create the first tool.
     - Item-Key should start with 'OKR' if not, whole line appear in RED
     - Color should be either yellow, orange, great or blue, if not whole line appear in RED
 - **Display**
-  - By default, only Display workspaces with one of the coloring in RED
+  - By default, only Display workspaces with one of the coloring in RED. In this case, only display the Workspace name and the lines in RED.
   - Add an optional flag `--all` to display all workspaces regardless of coloring.
 
 **Step 3: Documentation**

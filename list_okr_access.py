@@ -90,7 +90,8 @@ def get_all_workspaces() -> List[Dict[str, Any]]:
 def format_workspace_access(
     workspace: Dict[str, Any],
     current_user_id: str,
-    depth: int = 0
+    depth: int = 0,
+    show_all: bool = False
 ) -> tuple[List[str], bool]:
     """
     Format workspace access information as lines of text.
@@ -99,6 +100,7 @@ def format_workspace_access(
         workspace: Workspace object
         current_user_id: ID of the current authenticated user
         depth: Depth level in hierarchy (used for '..' prefix)
+        show_all: If True, show all lines; if False, only show workspace name and RED lines
     
     Returns:
         Tuple of (list of formatted lines, has_red_flag boolean)
@@ -137,27 +139,36 @@ def format_workspace_access(
     if item_color:
         valid_colors = ['yellow', 'orange', 'great', 'blue']
         color_line = f"{detail_indent}Color: {item_color}"
-        if item_color not in valid_colors:
+        is_red = item_color not in valid_colors
+        if is_red:
             color_line = colorize(color_line, 'red')
             has_red_flag = True
-        lines.append(color_line)
+        
+        if show_all or is_red:
+            lines.append(color_line)
     
     # Second: Item Key - RED whole line if doesn't start with 'OKR'
     if item_key:
         key_line = f"{detail_indent}Item Key: {item_key}"
-        if not item_key.startswith('OKR'):
+        is_red = not item_key.startswith('OKR')
+        if is_red:
             key_line = colorize(key_line, 'red')
             has_red_flag = True
-        lines.append(key_line)
+        
+        if show_all or is_red:
+            lines.append(key_line)
     
     # Third: Access Rights - RED whole line if not 'comment'
     if default_permission:
         perm_display = format_permission(default_permission)
         default_line = f"{detail_indent}Default: {perm_display}"
-        if default_permission != 'comment':
+        is_red = default_permission != 'comment'
+        if is_red:
             default_line = colorize(default_line, 'red')
             has_red_flag = True
-        lines.append(default_line)
+        
+        if show_all or is_red:
+            lines.append(default_line)
     
     # Add user permissions first (excluding current user)
     user_perms_filtered = {
@@ -165,7 +176,7 @@ def format_workspace_access(
         if uid != current_user_id
     }
     
-    if user_perms_filtered:
+    if user_perms_filtered and show_all:
         lines.append(f"{detail_indent}Users:")
         for user_id, permission in sorted(user_perms_filtered.items()):
             user_name = get_username_from_id(user_id)
@@ -174,7 +185,9 @@ def format_workspace_access(
     
     # Add group permissions after users
     if group_permissions:
-        lines.append(f"{detail_indent}Groups:")
+        if show_all:
+            lines.append(f"{detail_indent}Groups:")
+        
         for group_id, permission in sorted(group_permissions.items()):
             group_name = get_groupname_from_id(group_id)
             perm_str = format_permission(permission)
@@ -192,7 +205,12 @@ def format_workspace_access(
                 group_name = colorize(group_name, 'red')
                 perm_str = colorize(perm_str, 'red')
             
-            lines.append(f"{detail_indent}  • {group_name}: {perm_str}")
+            if show_all or highlight:
+                if not show_all and highlight:
+                    # Add Groups header only when showing RED group for first time
+                    if f"{detail_indent}Groups:" not in lines:
+                        lines.append(f"{detail_indent}Groups:")
+                lines.append(f"{detail_indent}  • {group_name}: {perm_str}")
     
     return lines, has_red_flag
 
@@ -228,7 +246,8 @@ def print_okr_hierarchy(
         lines, has_red_flag = format_workspace_access(
             workspace,
             current_user_id,
-            depth
+            depth,
+            show_all
         )
         
         # Display if show_all OR has RED flags
