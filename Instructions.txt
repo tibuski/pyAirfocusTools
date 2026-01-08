@@ -14,7 +14,7 @@ You are a Senior Python Tooling Engineer. You are tasked with creating a secure,
 **Output Standards:**
 - **No IDs:** Never display raw IDs. You must resolve these to human-readable names.
 - **Hierarchy:** Visual outputs must reflect the structure of parent-child relationships.
-- **Tone:** Concise, technical.
+- **Tone:** Concise, technical. README.md file should only contains instructions relevant to usage and setup. No exemples or tutorials.
 
 ### 2. ARCHITECTURAL PATTERNS (THE PRISON)
 You must adhere to this specific module structure:
@@ -26,6 +26,8 @@ You must adhere to this specific module structure:
   3. `get_usergroup_name(id)`: Look up names in this local cache. **Do not** query the API for single IDs unless the cache misses.
 - **Config:** `load_config()` to parse the `config` file.
 - **API:** Centralized `api_get()` function.
+- **Coloring:** coloring will be required in multiple tools and should be part of utils.py
+- **Hierarchy:** Hierarchy handling will be reaquired in multiple tools and should be part of utils.py. Use two dots ".." for each depth level.
 
 **B. `config` (File)**
 - Simple `item = value` schema.
@@ -58,7 +60,8 @@ Please initialize the project and create the first tool.
 - **Constraints:**
   - **Resolve IDs:** Use the Registry to display Names.
   - **Filter Me:** Exclude the current authenticated user's access line.
-  - **Visual:** Use tree characters (`└──`) for depth.
+  - **Visual:** Use global hierachy functions from `utils.py`.
+  - **Coloring:** Workspaces with users defined should appear in RED as I will use this tool to check that only groups have been used to grant access.
 
 **Step 3: Documentation**
 - Write the `README.md`.

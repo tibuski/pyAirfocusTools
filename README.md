@@ -48,7 +48,7 @@ All tools are executed using `uv run` to ensure they use the correct virtual env
 
 ### List OKR Workspaces Access
 
-Display all OKR-related workspaces with their access permissions in a hierarchical tree structure.
+Display all OKR-related workspaces with their access permissions in a hierarchical view.
 
 ```bash
 uv run python list_okr_access.py
@@ -57,33 +57,11 @@ uv run python list_okr_access.py
 **Options:**
 - `--all`: Include all workspaces, not just OKR workspaces
 
-**Example output:**
-```
-============================================================
-OKR WORKSPACES ACCESS REPORT
-============================================================
-
-└── Company OKRs 2024
-    Default: Read
-    Groups:
-      • Leadership Team: Full
-      • Product Team: Write
-    Users:
-      • John Smith: Full
-      • Jane Doe: Write
-
-└── Q1 Objectives
-    Default: Comment
-    Groups:
-      • Engineering: Write
-    Users:
-      • Alice Johnson: Full
-```
-
 **Features:**
-- Hierarchical tree view of workspaces
+- Hierarchical view of workspaces (using '..' for depth levels)
 - Resolves user and group IDs to human-readable names
 - Excludes the current authenticated user from the output
+- Highlights workspaces with direct user access in RED
 - Shows default permissions and explicit user/group permissions
 
 ## Available Tools
@@ -116,12 +94,13 @@ pyAirfocusTools/
 - `get_username_from_id()` - Resolve user IDs to names (uses registry)
 - `get_groupname_from_id()` - Resolve group IDs to names (uses registry)
 - `get_current_user_id()` - Get authenticated user's ID
-- `build_workspace_hierarchy()` - **Hierarchy Standard**: Build parent-child tree structure from workspaces using workspace-relations API
+- `build_workspace_hierarchy()` - Build parent-child tree structure from workspaces
 - `format_permission()` - Format permission values for display
+- `colorize()` - Apply ANSI color codes to text
 
-**Registry Pattern**: All tools call `load_registries()` at startup to pre-fetch users and workspace groups once, storing them in memory. This ensures efficient ID-to-name resolution without repeated API calls.
+**Registry Pattern**: All tools call `load_registries()` at startup to pre-fetch users and user groups once, storing them in memory for efficient ID-to-name resolution.
 
-**Hierarchy Standard**: The `build_workspace_hierarchy()` function in utils.py implements the standard for displaying parent-child relationships. It fetches workspace relations from the API and builds a recursive tree structure that all tools can use for hierarchical display.
+**Hierarchy Standard**: The `build_workspace_hierarchy()` function fetches workspace relations from the API and builds a recursive tree structure. Hierarchy display uses '..' for each depth level.
 
 **`config`** - Configuration file (key=value format):
 - `apikey` - Your Airfocus API key

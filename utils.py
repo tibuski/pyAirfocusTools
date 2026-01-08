@@ -92,6 +92,10 @@ def make_api_request(
         sys.exit(1)
 
 
+# Alias for clarity (as per instructions)
+api_get = make_api_request
+
+
 # Registry Pattern: Pre-fetch all users and groups at startup
 _user_registry: Dict[str, Dict[str, Any]] = {}
 _group_registry: Dict[str, Dict[str, Any]] = {}
@@ -314,3 +318,33 @@ def format_permission(permission: str) -> str:
         'full': 'Full'
     }
     return permission_map.get(permission, permission)
+
+
+def colorize(text: str, color: str) -> str:
+    """
+    Apply ANSI color codes to text.
+    
+    Args:
+        text: Text to colorize
+        color: Color name (red, green, yellow, blue, magenta, cyan, white)
+    
+    Returns:
+        Text wrapped in ANSI color codes
+    """
+    color_map = {
+        'red': '\033[91m',
+        'green': '\033[92m',
+        'yellow': '\033[93m',
+        'blue': '\033[94m',
+        'magenta': '\033[95m',
+        'cyan': '\033[96m',
+        'white': '\033[97m',
+        'reset': '\033[0m'
+    }
+    
+    color_code = color_map.get(color.lower(), '')
+    reset_code = color_map['reset']
+    
+    if color_code:
+        return f"{color_code}{text}{reset_code}"
+    return text

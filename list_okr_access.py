@@ -17,7 +17,8 @@ from utils import (
     get_groupname_from_id,
     get_current_user_id,
     format_permission,
-    build_workspace_hierarchy
+    build_workspace_hierarchy,
+    colorize
 )
 
 
@@ -89,9 +90,7 @@ def get_all_workspaces() -> List[Dict[str, Any]]:
 def format_workspace_access(
     workspace: Dict[str, Any],
     current_user_id: str,
-    tree_prefix: str = "",
-    tree_branch: str = "└── ",
-    continuation: str = ""
+    depth: int = 0
 ) -> List[str]:
     """
     Format workspace access information as lines of text.
@@ -99,22 +98,28 @@ def format_workspace_access(
     Args:
         workspace: Workspace object
         current_user_id: ID of the current authenticated user
-        tree_prefix: Prefix for tree structure (e.g., "│   ")
-        tree_branch: Branch character for this item ("├── " or "└── ")
-        continuation: Continuation prefix for details ("│   " or "    ")
+        depth: Depth level in hierarchy (used for '..' prefix)
     
     Returns:
         List of formatted lines
     """
     lines = []
     
-    # Workspace name
-    ws_name = workspace.get('name', 'Unnamed')
-    lines.append(f"{tree_prefix}{tree_branch}{ws_name}")
-    
-    # Get permissions from embedded data
+    # Check if workspace has user permissions (excluding current user)
     embedded = workspace.get('_embedded', {})
     user_permissions = embedded.get('permissions', {})
+    has_user_access = any(uid != current_user_id for uid in user_permissions.keys())
+    
+    # Build prefix using '..' for each depth level
+    prefix = ".." * depth
+    
+    # Workspace name - display in RED if it has user access
+    ws_name = workspace.get('name', 'Unnamed')
+    if has_user_access:
+        ws_name = colorize(ws_name, 'red')
+    lines.append(f"{prefix}{ws_name}")
+    
+    # Get permissions from embedded data
     group_permissions = embedded.get('userGroupPermissions', {})
     default_permission = workspace.get('defaultPermission')
     
@@ -149,18 +154,16 @@ def format_workspace_access(
 def print_okr_hierarchy(
     node: Dict[str, Any],
     current_user_id: str,
-    tree_prefix: str = "",
-    is_last: bool = True,
+    depth: int = 0,
     show_all: bool = False
 ):
     """
-    Recursively print OKR workspace hierarchy with vertical lines.
+    Recursively print OKR workspace hierarchy using '..' for depth levels.
     
     Args:
         node: Node with 'workspace' and 'children'
         current_user_id: ID of the current authenticated user
-        tree_prefix: Current tree prefix (vertical lines from parents)
-        is_last: Whether this is the last child of its parent
+        depth: Current depth level in hierarchy
         show_all: If True, show all workspaces; if False, only OKR workspaces
     """
     workspace = node['workspace']
@@ -176,35 +179,26 @@ def print_okr_hierarchy(
     
     # Show this workspace if it's OKR or has OKR descendants (or show_all is True)
     if should_show or has_okr_children:
-        # Choose branch character
-        branch = "└── " if is_last else "├── "
-        continuation = "    " if is_last else "│   "
-        
         lines = format_workspace_access(
             workspace,
             current_user_id,
-            tree_prefix,
-            branch,
-            continuation
+            depth
         )
         for line in lines:
             print(line)
         
         # Recursively print children
         children = node.get('children', [])
-        for i, child in enumerate(children):
-            child_is_last = (i == len(children) - 1)
-            child_prefix = tree_prefix + continuation
+        for child in children:
             print_okr_hierarchy(
                 child,
                 current_user_id,
-                child_prefix,
-                child_is_last,
+                depth + 1,
                 show_all
             )
         
         # Add empty line after root-level workspaces
-        if tree_prefix == "":
+        if depth == 0:
             print()
 
 
@@ -268,18 +262,16 @@ def main():
     # Process each root workspace
     found_okr = False
     roots = hierarchy['roots']
-    for i, root in enumerate(roots):
-        is_last_root = (i == len(roots) - 1)
-        
+    for root in roots:
         # For --all flag, show everything
         if args.all:
             found_okr = True
-            print_okr_hierarchy(root, current_user_id, tree_prefix="", is_last=is_last_root, show_all=True)
+            print_okr_hierarchy(root, current_user_id, depth=0, show_all=True)
         else:
             # Only show if workspace or descendants are OKR
             if is_okr_workspace(root['workspace']) or has_okr_descendants(root, set()):
                 found_okr = True
-                print_okr_hierarchy(root, current_user_id, tree_prefix="", is_last=is_last_root, show_all=False)
+                print_okr_hierarchy(root, current_user_id, depth=0, show_all=False)
     
     if not found_okr:
         print("No OKR workspaces found.")
