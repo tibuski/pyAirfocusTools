@@ -120,8 +120,8 @@ def load_registries(verify_ssl: bool = True):
     This implements the Registry Pattern to avoid multiple API calls.
     Call this function once at the start of your tool.
     
-    CRITICAL: This fetches User Groups (Global Teams), NOT workspace groups.
-    User Groups are collections of users with shared permissions.
+    CRITICAL: User Groups (Global Teams) are NOT directly exposed via API.
+    We discover them by scanning all workspace permissions for user group IDs.
     
     Args:
         verify_ssl: Whether to verify SSL certificates (default: True)
@@ -135,17 +135,49 @@ def load_registries(verify_ssl: bool = True):
     users = make_api_request('/api/team/users', verify_ssl=verify_ssl)
     _user_registry = {user['userId']: user for user in users}
     
-    # Fetch all user groups (Global Teams) - these are NOT available via API
-    # Must be configured manually in the config file
-    # The API does not expose user groups endpoints
+    # Discover user groups by scanning workspaces
+    # User Groups are NOT available via API, but we can find their IDs in workspace permissions
     _group_registry = {}
     
-    # Load user group mappings from config file
-    config = load_config()
-    for key, value in config.items():
-        if key.startswith('usergroup_'):
-            group_id = key.replace('usergroup_', '')
-            _group_registry[group_id] = {'id': group_id, 'name': value}
+    # Fetch all workspaces to discover user groups
+    offset = 0
+    limit = 1000
+    discovered_groups = set()
+    
+    while True:
+        response = make_api_request(
+            '/api/workspaces/search',
+            method='POST',
+            data={
+                'archived': False,
+                'sort': {'type': 'name', 'direction': 'asc'}
+            },
+            params={'offset': offset, 'limit': limit},
+            verify_ssl=verify_ssl
+        )
+        
+        items = response.get('items', [])
+        
+        # Extract user group IDs from userGroupPermissions
+        for workspace in items:
+            embedded = workspace.get('_embedded', {})
+            user_group_perms = embedded.get('userGroupPermissions', {})
+            for group_id in user_group_perms.keys():
+                discovered_groups.add(group_id)
+        
+        total_items = response.get('totalItems', 0)
+        if offset + limit >= total_items:
+            break
+        
+        offset += limit
+    
+    # Store discovered groups with sequential names (no IDs displayed)
+    # The group IDs are all we can get from the API, but we don't show them
+    for idx, group_id in enumerate(sorted(discovered_groups), start=1):
+        _group_registry[group_id] = {
+            'id': group_id,
+            'name': f'UserGroup{idx:03d}'  # UserGroup001, UserGroup002, etc.
+        }
     
     _registries_loaded = True
 
@@ -173,25 +205,26 @@ def get_usergroup_name(group_id: str) -> str:
     """
     Resolve a user group ID to a human-readable name using the registry.
     
-    CRITICAL: This is for User Groups (Global Teams), NOT workspace groups.
-    User groups must be manually configured in the config file.
+    CRITICAL: User Groups (Global Teams) are NOT directly exposed via API.
+    We discover them from workspace permissions and assign sequential names.
     
     Args:
         group_id: UUID of the user group
     
     Returns:
-        Group's name (or appropriate fallback if not found)
+        Group's sequential name (e.g., UserGroup001, UserGroup002)
     """
     if not _registries_loaded:
         load_registries()
     
-    # Check user groups from config
+    # Check user groups discovered from workspaces
     group = _group_registry.get(group_id)
     if group:
-        return group.get('name', group_id)
+        return group.get('name', f'UserGroup{len(_group_registry):03d}')
     
-    # Group not in registry - not configured
-    return f"(Unknown Group: {group_id[:8]}...)"
+    # Group not in registry - assign next number
+    next_num = len(_group_registry) + 1
+    return f'UserGroup{next_num:03d}'
 
 
 # Alias for backward compatibility

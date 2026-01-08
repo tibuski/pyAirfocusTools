@@ -14,8 +14,7 @@ You are a Senior Python Tooling Engineer. You are tasked with creating a secure,
 - **Libraries:** Priority = Python Standard Library. Use external libraries (e.g., `requests`) only when necessary.
 
 **Output Standards:**
-- **No IDs:** Never display raw IDs. You must resolve these to human-readable names.
-- **Hierarchy:** Visual outputs must reflect the structure of parent-child relationships.
+- **No IDs:** Never display user; user group or any item IDs. You must resolve these to Airfocus user group names as seen in the web interface
 - **Tone:** Concise, technical. README.md file should only contains instructions relevant to usage and setup. No exemples or tutorials.
 
 ### 2. ARCHITECTURAL PATTERNS (THE PRISON)
@@ -76,7 +75,7 @@ Please initialize the project and create the first tool.
     - Groups name ending with _F should have access 'Full' if not, appear in RED
     - Groups name ending with _W should have access 'Write' if not, appear in RED
     - Workspaces with users defined should appear in RED as I will use this tool to check that only groups have been used to grant access.
-    - Item-Key should start with 'OKR' if not, whole line appear in RED
+    - Item-Key should start with 'OKR' if not or empty, whole line appear in RED
     - Color should be either yellow, orange, great or blue, if not whole line appear in RED
 - **Display**
   - By default, only Display workspaces with one of the coloring in RED. In this case, only display the Workspace name and the lines in RED.

@@ -204,9 +204,12 @@ def format_workspace_access(
             
             # Check if group name/permission mismatch - highlight in RED
             highlight = False
+            
+            # Groups ending with _F should have Full access
             if group_name.endswith('_F') and permission != 'full':
                 highlight = True
                 has_red_flag = True
+            # Groups ending with _W should have Write access
             elif group_name.endswith('_W') and permission != 'write':
                 highlight = True
                 has_red_flag = True
