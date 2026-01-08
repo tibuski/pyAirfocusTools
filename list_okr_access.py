@@ -126,9 +126,12 @@ def format_workspace_access(
     # Detail indent uses spaces (not '..' prefix) - 2 spaces per depth level
     detail_indent = "  " * (depth + 1)
     
-    # Add default permission if exists
+    # Add default permission if exists - RED if not 'comment'
     if default_permission:
-        lines.append(f"{detail_indent}Default: {format_permission(default_permission)}")
+        perm_display = format_permission(default_permission)
+        if default_permission != 'comment':
+            perm_display = colorize(perm_display, 'red')
+        lines.append(f"{detail_indent}Default: {perm_display}")
     
     # Add user permissions first (excluding current user)
     user_perms_filtered = {
@@ -149,6 +152,18 @@ def format_workspace_access(
         for group_id, permission in sorted(group_permissions.items()):
             group_name = get_groupname_from_id(group_id)
             perm_str = format_permission(permission)
+            
+            # Check if group name/permission mismatch - highlight in RED
+            highlight = False
+            if group_name.endswith('_F') and permission != 'full':
+                highlight = True
+            elif group_name.endswith('_W') and permission != 'write':
+                highlight = True
+            
+            if highlight:
+                group_name = colorize(group_name, 'red')
+                perm_str = colorize(perm_str, 'red')
+            
             lines.append(f"{detail_indent}  • {group_name}: {perm_str}")
     
     return lines

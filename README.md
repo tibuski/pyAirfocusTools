@@ -58,11 +58,14 @@ uv run python list_okr_access.py
 - `--all`: Include all workspaces, not just OKR workspaces
 
 **Features:**
-- Hierarchical view of workspaces (using '..' for depth levels)
+- Hierarchical view of workspaces (using '..' for depth levels, no dots for root level)
 - Resolves user and group IDs to human-readable names
 - Excludes the current authenticated user from the output
-- Highlights workspaces with direct user access in RED
-- Shows default permissions and explicit user/group permissions
+- RED highlighting for:
+  - Workspaces with direct user access (should use groups instead)
+  - Default permissions not set to 'Comment'
+  - Groups ending with '_F' without 'Full' access
+  - Groups ending with '_W' without 'Write' access
 
 ## Available Tools
 

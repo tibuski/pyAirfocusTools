@@ -65,7 +65,11 @@ Please initialize the project and create the first tool.
   - **Resolve IDs:** Use the Registry to display Names.
   - **Filter Me:** Exclude the current authenticated user's access line.
   - **Visual:** Use global hierachy functions from `utils.py`.
-  - **Coloring:** Workspaces with users defined should appear in RED as I will use this tool to check that only groups have been used to grant access.
+  - **Coloring:** 
+    - Workspaces Default access should be 'Comment', if not, it should appear in RED
+    - Groups name ending with _F should have access 'Full' if not, appear in RED
+    - Groups name ending with _W should have access 'Write' if not, appear in RED
+    - Workspaces with users defined should appear in RED as I will use this tool to check that only groups have been used to grant access.
 
 **Step 3: Documentation**
 - Write the `README.md`.
