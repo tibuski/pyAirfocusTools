@@ -38,12 +38,16 @@ def load_config() -> Dict[str, str]:
                 key, value = line.split('=', 1)
                 config[key.strip()] = value.strip()
     
-    required_keys = ['apikey', 'base_url']
+    required_keys = ['apikey', 'baseurl']
     missing_keys = [key for key in required_keys if key not in config]
     
     if missing_keys:
         print(f"Error: Missing required configuration keys: {', '.join(missing_keys)}")
         sys.exit(1)
+    
+    # Normalize base_url key
+    if 'baseurl' in config and 'base_url' not in config:
+        config['base_url'] = config['baseurl']
     
     return config
 
@@ -52,7 +56,8 @@ def make_api_request(
     endpoint: str,
     method: str = "GET",
     data: Optional[Dict[str, Any]] = None,
-    params: Optional[Dict[str, Any]] = None
+    params: Optional[Dict[str, Any]] = None,
+    verify_ssl: bool = True
 ) -> Dict[str, Any]:
     """
     Make an authenticated API request to Airfocus.
@@ -62,6 +67,7 @@ def make_api_request(
         method: HTTP method (GET, POST, etc.)
         data: Request body data for POST requests
         params: Query parameters
+        verify_ssl: Whether to verify SSL certificates (default: True)
     
     Returns:
         Parsed JSON response
@@ -75,13 +81,19 @@ def make_api_request(
         'Content-Type': 'application/json'
     }
     
+    # Suppress SSL warnings if verify_ssl is False
+    if not verify_ssl:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    
     try:
         response = requests.request(
             method=method,
             url=url,
             headers=headers,
             json=data,
-            params=params
+            params=params,
+            verify=verify_ssl
         )
         response.raise_for_status()
         return response.json() if response.content else {}
@@ -98,62 +110,42 @@ api_get = make_api_request
 
 # Registry Pattern: Pre-fetch all users and groups at startup
 _user_registry: Dict[str, Dict[str, Any]] = {}
-_group_registry: Dict[str, Dict[str, Any]] = {}
-_usergroup_registry: Dict[str, str] = {}  # User group ID -> name mappings from config
+_group_registry: Dict[str, Dict[str, Any]] = {}  # User Groups (Global Teams) from config
 _registries_loaded: bool = False
 
 
-def load_registries():
+def load_registries(verify_ssl: bool = True):
     """
-    Pre-fetch all users and groups from the API once and cache them.
-    Also loads user group mappings from the config file.
+    Pre-fetch all users and user groups from the API once and cache them.
     This implements the Registry Pattern to avoid multiple API calls.
     Call this function once at the start of your tool.
     
-    NOTE: User Groups (collections of users) are not exposed via the Airfocus public API.
-    They must be manually configured in the config file using the format:
-        usergroup_<UUID> = Group Name
+    CRITICAL: This fetches User Groups (Global Teams), NOT workspace groups.
+    User Groups are collections of users with shared permissions.
     
-    Workspace Groups (collections of workspaces) are fetched from the API.
+    Args:
+        verify_ssl: Whether to verify SSL certificates (default: True)
     """
-    global _user_registry, _group_registry, _usergroup_registry, _registries_loaded
+    global _user_registry, _group_registry, _registries_loaded
     
     if _registries_loaded:
         return
     
-    # Load config to get user group mappings (not available via API)
+    # Fetch all users
+    users = make_api_request('/api/team/users', verify_ssl=verify_ssl)
+    _user_registry = {user['userId']: user for user in users}
+    
+    # Fetch all user groups (Global Teams) - these are NOT available via API
+    # Must be configured manually in the config file
+    # The API does not expose user groups endpoints
+    _group_registry = {}
+    
+    # Load user group mappings from config file
     config = load_config()
     for key, value in config.items():
         if key.startswith('usergroup_'):
             group_id = key.replace('usergroup_', '')
-            _usergroup_registry[group_id] = value
-    
-    # Fetch all users
-    users = make_api_request('/api/team/users')
-    _user_registry = {user['userId']: user for user in users}
-    
-    # Fetch all user groups (Global Teams) with pagination
-    _group_registry = {}
-    offset = 0
-    limit = 1000
-    
-    while True:
-        response = make_api_request(
-            '/api/team/user-groups/search',
-            method='POST',
-            data={'archived': False},
-            params={'offset': offset, 'limit': limit}
-        )
-        groups = response.get('items', [])
-        for group in groups:
-            _group_registry[group['id']] = group
-        
-        # Check if we've retrieved all items
-        total_items = response.get('totalItems', 0)
-        offset += len(groups)
-        
-        if offset >= total_items or len(groups) == 0:
-            break
+            _group_registry[group_id] = {'id': group_id, 'name': value}
     
     _registries_loaded = True
 
@@ -177,16 +169,15 @@ def get_username_from_id(user_id: str) -> str:
     return user_id
 
 
-def get_groupname_from_id(group_id: str) -> str:
+def get_usergroup_name(group_id: str) -> str:
     """
-    Resolve a group ID to a human-readable name using the registry.
-    Handles both workspace groups (from API) and user groups (from config).
+    Resolve a user group ID to a human-readable name using the registry.
     
-    This is aliased as get_usergroup_name() for clarity when specifically
-    dealing with user groups.
+    CRITICAL: This is for User Groups (Global Teams), NOT workspace groups.
+    User groups must be manually configured in the config file.
     
     Args:
-        group_id: UUID of the workspace group or user group
+        group_id: UUID of the user group
     
     Returns:
         Group's name (or appropriate fallback if not found)
@@ -194,41 +185,41 @@ def get_groupname_from_id(group_id: str) -> str:
     if not _registries_loaded:
         load_registries()
     
-    # Check workspace groups first
+    # Check user groups from config
     group = _group_registry.get(group_id)
     if group:
         return group.get('name', group_id)
     
-    # Check user groups from config
-    if group_id in _usergroup_registry:
-        return _usergroup_registry[group_id]
-    
-    # Group not in any registry - it's been deleted or not configured
+    # Group not in registry - not configured
     return f"(Unknown Group: {group_id[:8]}...)"
 
 
-# Alias for clarity when dealing specifically with user groups
-get_usergroup_name = get_groupname_from_id
+# Alias for backward compatibility
+get_groupname_from_id = get_usergroup_name
 
 
-def get_current_user_id() -> str:
+def get_current_user_id(verify_ssl: bool = True) -> str:
     """
     Get the current authenticated user's ID from their profile.
+    
+    Args:
+        verify_ssl: Whether to verify SSL certificates (default: True)
     
     Returns:
         User ID of the authenticated user
     """
-    profile = make_api_request('/api/profile')
+    profile = make_api_request('/api/profile', verify_ssl=verify_ssl)
     return profile.get('id', '')
 
 
-def build_workspace_hierarchy(workspaces: list) -> Dict[str, Any]:
+def build_workspace_hierarchy(workspaces: list, verify_ssl: bool = True) -> Dict[str, Any]:
     """
     Build a hierarchical tree structure from a flat list of workspaces using the
     workspace-relations API to determine parent-child relationships.
     
     Args:
         workspaces: List of workspace objects from the API
+        verify_ssl: Whether to verify SSL certificates (default: True)
     
     Returns:
         Dictionary with 'roots' (list of root nodes) and 'map' (workspace_id -> node)
@@ -241,7 +232,8 @@ def build_workspace_hierarchy(workspaces: list) -> Dict[str, Any]:
     response = make_api_request(
         '/api/workspaces/workspace-relations/search',
         method='POST',
-        data={}
+        data={},
+        verify_ssl=verify_ssl
     )
     
     relations = response.get('items', [])

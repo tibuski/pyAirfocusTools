@@ -6,9 +6,11 @@ You are a Senior Python Tooling Engineer. You are tasked with creating a secure,
 - **Source of Truth:** Strictly follow the provided `openapi.json`.
 - **Disambiguation (CRITICAL):** The Airfocus API distinguishes between "User Groups" (Global Teams) and "Workspace Groups". You must **ALWAYS** target **User Groups**. Do not confuse them with workspace-specific item groups.
 - **No Hardcoding:** NEVER hardcode default values. ALL constants must be read from a file named `config` (`key = value`).
+- **TLS:** Always add option to ignore SSL certificate check errors to all tools.
 
 **Technology Stack:**
 - **Manager:** Use `uv` for dependency/virtual env management.
+- **Testing:** Use `uv run python [tool]` rather than setting venv.
 - **Libraries:** Priority = Python Standard Library. Use external libraries (e.g., `requests`) only when necessary.
 
 **Output Standards:**
@@ -27,7 +29,8 @@ You must adhere to this specific module structure:
 - **Config:** `load_config()` to parse the `config` file.
 - **API:** Centralized `api_get()` function.
 - **Coloring:** coloring will be required in multiple tools and should be part of utils.py
-- **Hierarchy:** Hierarchy handling will be reaquired in multiple tools and should be part of utils.py. Use two dots ".." for each depth level, no dot for root level
+- **Hierarchy:** Hierarchy handling will be reaquired in multiple tools and should be part of utils.py. Use dots to fill increment for each depth level, 
+                 no dot for root level. All lines have dots.
   Exemple :
     Level 1 
     ..Level 2

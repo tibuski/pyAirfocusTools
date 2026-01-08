@@ -5,10 +5,5 @@
 apikey = your_api_key_here
 
 # API Base URL
-baseurl = https://api.airfocus.com
+baseurl = https://app.airfocus.com
 
-# User Group Mappings (UUID = Name)
-# User groups are not accessible via the public API, so they must be manually configured here
-# Format: usergroup_<UUID> = Group Name
-# Example:
-# usergroup_703ba71a-6a09-4420-b8c9-b1e57fbb7689 = Engineering Team
