@@ -27,7 +27,11 @@ You must adhere to this specific module structure:
 - **Config:** `load_config()` to parse the `config` file.
 - **API:** Centralized `api_get()` function.
 - **Coloring:** coloring will be required in multiple tools and should be part of utils.py
-- **Hierarchy:** Hierarchy handling will be reaquired in multiple tools and should be part of utils.py. Use two dots ".." for each depth level.
+- **Hierarchy:** Hierarchy handling will be reaquired in multiple tools and should be part of utils.py. Use two dots ".." for each depth level, no dot for root level
+  Exemple :
+    Level 1 
+    ..Level 2
+    ....Level 3
 
 **B. `config` (File)**
 - Simple `item = value` schema.

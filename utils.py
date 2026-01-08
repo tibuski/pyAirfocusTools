@@ -269,9 +269,8 @@ def build_workspace_hierarchy(workspaces: list) -> Dict[str, Any]:
         if visited is None:
             visited = set()
         
-        # Detect cycles
+        # Detect cycles - silently handle by stopping recursion
         if ws_id in visited:
-            print(f"Warning: Circular reference detected for workspace {ws_id}")
             return {
                 'workspace': workspace_map[ws_id],
                 'children': []
