@@ -113,25 +113,16 @@ def format_workspace_access(
     # Build prefix using '..' for each depth level
     prefix = ".." * depth
     
-    # Workspace name with color and item key
+    # Workspace name
     ws_name = workspace.get('name', 'Unnamed')
     item_key = workspace.get('alias', '')
     item_color = workspace.get('itemColor', '')
     
-    # Build display: "Name [KEY] (color)"
-    display_parts = [ws_name]
-    if item_key:
-        display_parts.append(f"[{item_key}]")
-    if item_color:
-        display_parts.append(f"({item_color})")
-    
-    full_display = " ".join(display_parts)
-    
     # Display in RED if it has user access
     if has_user_access:
-        full_display = colorize(full_display, 'red')
+        ws_name = colorize(ws_name, 'red')
     
-    lines.append(f"{prefix}{full_display}")
+    lines.append(f"{prefix}{ws_name}")
     
     # Get permissions from embedded data
     group_permissions = embedded.get('userGroupPermissions', {})
@@ -140,7 +131,15 @@ def format_workspace_access(
     # Detail indent uses spaces (not '..' prefix) - 2 spaces per depth level
     detail_indent = "  " * (depth + 1)
     
-    # Add default permission if exists - RED if not 'comment'
+    # First: Color
+    if item_color:
+        lines.append(f"{detail_indent}Color: {item_color}")
+    
+    # Second: Item Key
+    if item_key:
+        lines.append(f"{detail_indent}Item Key: {item_key}")
+    
+    # Third: Access Rights - Add default permission if exists - RED if not 'comment'
     if default_permission:
         perm_display = format_permission(default_permission)
         if default_permission != 'comment':

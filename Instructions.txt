@@ -57,9 +57,9 @@ Please initialize the project and create the first tool.
 
 **Step 2: Create Tool `list_okr_access.py`**
 - **Objective:** List all **OKR Workspaces** in a hierarchical view with :
-    - access rights
-    - color name
-    - Item Key
+    - First : Color : color name
+    - Second : Item Key : Item
+    - Third : Acces Rights
 - **Logic:**
   1. Load Config & Pre-fetch Registries (Users + User Groups).
   2. Traverse workspace hierarchy.
