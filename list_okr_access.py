@@ -91,7 +91,7 @@ def format_workspace_access(
     workspace: Dict[str, Any],
     current_user_id: str,
     depth: int = 0
-) -> List[str]:
+) -> tuple[List[str], bool]:
     """
     Format workspace access information as lines of text.
     
@@ -101,9 +101,10 @@ def format_workspace_access(
         depth: Depth level in hierarchy (used for '..' prefix)
     
     Returns:
-        List of formatted lines
+        Tuple of (list of formatted lines, has_red_flag boolean)
     """
     lines = []
+    has_red_flag = False
     
     # Check if workspace has user permissions (excluding current user)
     embedded = workspace.get('_embedded', {})
@@ -121,6 +122,7 @@ def format_workspace_access(
     # Display in RED if it has user access
     if has_user_access:
         ws_name = colorize(ws_name, 'red')
+        has_red_flag = True
     
     lines.append(f"{prefix}{ws_name}")
     
@@ -131,27 +133,31 @@ def format_workspace_access(
     # Detail indent uses spaces (not '..' prefix) - 2 spaces per depth level
     detail_indent = "  " * (depth + 1)
     
-    # First: Color - RED if not yellow, orange, great, or blue
+    # First: Color - RED whole line if not yellow, orange, great, or blue
     if item_color:
         valid_colors = ['yellow', 'orange', 'great', 'blue']
-        color_display = item_color
+        color_line = f"{detail_indent}Color: {item_color}"
         if item_color not in valid_colors:
-            color_display = colorize(item_color, 'red')
-        lines.append(f"{detail_indent}Color: {color_display}")
+            color_line = colorize(color_line, 'red')
+            has_red_flag = True
+        lines.append(color_line)
     
-    # Second: Item Key - RED if doesn't start with 'OKR'
+    # Second: Item Key - RED whole line if doesn't start with 'OKR'
     if item_key:
-        key_display = item_key
+        key_line = f"{detail_indent}Item Key: {item_key}"
         if not item_key.startswith('OKR'):
-            key_display = colorize(item_key, 'red')
-        lines.append(f"{detail_indent}Item Key: {key_display}")
+            key_line = colorize(key_line, 'red')
+            has_red_flag = True
+        lines.append(key_line)
     
-    # Third: Access Rights - Add default permission if exists - RED if not 'comment'
+    # Third: Access Rights - RED whole line if not 'comment'
     if default_permission:
         perm_display = format_permission(default_permission)
+        default_line = f"{detail_indent}Default: {perm_display}"
         if default_permission != 'comment':
-            perm_display = colorize(perm_display, 'red')
-        lines.append(f"{detail_indent}Default: {perm_display}")
+            default_line = colorize(default_line, 'red')
+            has_red_flag = True
+        lines.append(default_line)
     
     # Add user permissions first (excluding current user)
     user_perms_filtered = {
@@ -177,8 +183,10 @@ def format_workspace_access(
             highlight = False
             if group_name.endswith('_F') and permission != 'full':
                 highlight = True
+                has_red_flag = True
             elif group_name.endswith('_W') and permission != 'write':
                 highlight = True
+                has_red_flag = True
             
             if highlight:
                 group_name = colorize(group_name, 'red')
@@ -186,7 +194,7 @@ def format_workspace_access(
             
             lines.append(f"{detail_indent}  • {group_name}: {perm_str}")
     
-    return lines
+    return lines, has_red_flag
 
 
 def print_okr_hierarchy(
@@ -202,12 +210,12 @@ def print_okr_hierarchy(
         node: Node with 'workspace' and 'children'
         current_user_id: ID of the current authenticated user
         depth: Current depth level in hierarchy
-        show_all: If True, show all workspaces; if False, only OKR workspaces
+        show_all: If True, show all workspaces; if False, only show workspaces with RED flags
     """
     workspace = node['workspace']
     
     # Determine if we should show this workspace
-    should_show = show_all or is_okr_workspace(workspace)
+    should_show_okr = is_okr_workspace(workspace)
     
     # Check if any children are OKR workspaces (for filtering)
     has_okr_children = any(
@@ -215,15 +223,18 @@ def print_okr_hierarchy(
         for child in node.get('children', [])
     )
     
-    # Show this workspace if it's OKR or has OKR descendants (or show_all is True)
-    if should_show or has_okr_children:
-        lines = format_workspace_access(
+    # Show this workspace if it's OKR or has OKR descendants
+    if should_show_okr or has_okr_children:
+        lines, has_red_flag = format_workspace_access(
             workspace,
             current_user_id,
             depth
         )
-        for line in lines:
-            print(line)
+        
+        # Display if show_all OR has RED flags
+        if show_all or has_red_flag:
+            for line in lines:
+                print(line)
         
         # Recursively print children
         children = node.get('children', [])

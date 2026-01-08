@@ -69,12 +69,15 @@ Please initialize the project and create the first tool.
   - **Filter Me:** Exclude the current authenticated user's access line.
   - **Visual:** Use global hierachy functions from `utils.py`.
   - **Coloring:** 
-    - Workspaces Default access should be 'Comment', if not, it should appear in RED
+    - Workspaces Default access should be 'Comment', if not, whole line appear in RED
     - Groups name ending with _F should have access 'Full' if not, appear in RED
     - Groups name ending with _W should have access 'Write' if not, appear in RED
     - Workspaces with users defined should appear in RED as I will use this tool to check that only groups have been used to grant access.
-    - Item-Key should start with 'OKR' if not, appear in RED
-    - Color should be either yellow, orange, great or blue, if not appear in RED
+    - Item-Key should start with 'OKR' if not, whole line appear in RED
+    - Color should be either yellow, orange, great or blue, if not whole line appear in RED
+- **Display**
+  - By default, only Display workspaces with one of the coloring in RED
+  - Add an optional flag `--all` to display all workspaces regardless of coloring.
 
 **Step 3: Documentation**
-- Write the `README.md`.
+- Write/Update the `README.md`.

@@ -55,20 +55,22 @@ uv run python list_okr_access.py
 ```
 
 **Options:**
-- `--all`: Include all workspaces, not just OKR workspaces
+- `--all`: Display all OKR workspaces (by default, only workspaces with validation issues are shown)
 
 **Features:**
 - Hierarchical view of workspaces (using '..' for depth levels, no dots for root level)
 - Displays workspace information in order: Color, Item Key, Access Rights
 - Resolves user and group IDs to human-readable names
 - Excludes the current authenticated user from the output
-- RED highlighting for:
+- By default, shows only workspaces with validation issues (use --all to see everything)
+- RED highlighting (whole line) for:
   - Workspaces with direct user access (should use groups instead)
   - Default permissions not set to 'Comment'
-  - Groups ending with '_F' without 'Full' access
-  - Groups ending with '_W' without 'Write' access
   - Item Keys not starting with 'OKR'
   - Colors not in the valid set (yellow, orange, great, blue)
+- RED highlighting (name and permission) for:
+  - Groups ending with '_F' without 'Full' access
+  - Groups ending with '_W' without 'Write' access
 
 ## Available Tools
 
