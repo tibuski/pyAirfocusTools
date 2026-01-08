@@ -59,6 +59,7 @@ uv run python list_okr_access.py
 
 **Features:**
 - Hierarchical view of workspaces (using '..' for depth levels, no dots for root level)
+- Displays workspace name, item key, and color
 - Resolves user and group IDs to human-readable names
 - Excludes the current authenticated user from the output
 - RED highlighting for:

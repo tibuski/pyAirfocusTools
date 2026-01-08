@@ -56,7 +56,10 @@ Please initialize the project and create the first tool.
 - **Requirement:** Ensure the registry fetching logic specifically targets the endpoint for **User Groups**, not workspace groups.
 
 **Step 2: Create Tool `list_okr_access.py`**
-- **Objective:** List all **OKR Workspaces** in a hierarchical view with access rights.
+- **Objective:** List all **OKR Workspaces** in a hierarchical view with :
+    - access rights
+    - color name
+    - Item Key
 - **Logic:**
   1. Load Config & Pre-fetch Registries (Users + User Groups).
   2. Traverse workspace hierarchy.

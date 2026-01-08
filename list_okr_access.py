@@ -113,11 +113,25 @@ def format_workspace_access(
     # Build prefix using '..' for each depth level
     prefix = ".." * depth
     
-    # Workspace name - display in RED if it has user access
+    # Workspace name with color and item key
     ws_name = workspace.get('name', 'Unnamed')
+    item_key = workspace.get('alias', '')
+    item_color = workspace.get('itemColor', '')
+    
+    # Build display: "Name [KEY] (color)"
+    display_parts = [ws_name]
+    if item_key:
+        display_parts.append(f"[{item_key}]")
+    if item_color:
+        display_parts.append(f"({item_color})")
+    
+    full_display = " ".join(display_parts)
+    
+    # Display in RED if it has user access
     if has_user_access:
-        ws_name = colorize(ws_name, 'red')
-    lines.append(f"{prefix}{ws_name}")
+        full_display = colorize(full_display, 'red')
+    
+    lines.append(f"{prefix}{full_display}")
     
     # Get permissions from embedded data
     group_permissions = embedded.get('userGroupPermissions', {})
