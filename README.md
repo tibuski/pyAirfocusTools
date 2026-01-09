@@ -25,15 +25,6 @@ Secure, modular CLI toolset for interacting with the Airfocus API.
    ```ini
    apikey = your_airfocus_api_key_here
    baseurl = https://app.airfocus.com
-<<<<<<< HEAD
-=======
-   
-   # User Group Mappings (required for proper group resolution)
-   # CRITICAL: User Groups (Global Teams) are NOT exposed via API
-   # Format: usergroup_<UUID> = Group Name
-   usergroup_703ba71a-6a09-4420-b8c9-b1e57fbb7689 = Engineering_F
-   usergroup_8f3cd92b-7b1a-5531-c9da-c2f68gcc8790 = Marketing_W
->>>>>>> e04d42e3a79cfc0f03a17dc72cc1d58f88dbcd00
    ```
 
 ## Usage
@@ -68,6 +59,10 @@ uv run python list_okr_access.py --no-verify-ssl
 - Groups ending with '_F' without 'Full' access
 - Groups ending with '_W' without 'Write' access
 
+**Color Display:**
+- Workspace names appear in their designated color when not flagged with RED
+- Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
+
 ## Architecture
 
 **`utils.py`** - Core library:
@@ -81,14 +76,9 @@ uv run python list_okr_access.py --no-verify-ssl
 
 **`config`** - Configuration file (key = value format)
 
-<<<<<<< HEAD
 **User Groups Discovery:**
 - **User Groups (Global Teams)**: NOT available via direct API endpoint. Discovered by scanning all workspace permissions for user group IDs.
 - Group names displayed as sequential numbers: `UserGroup001`, `UserGroup002`, etc. (no IDs shown per requirements)
-=======
-**User Groups vs Workspace Groups:**
-- **User Groups (Global Teams)**: Collections of users. NOT available via API. Must be manually configured in `config` file.
->>>>>>> e04d42e3a79cfc0f03a17dc72cc1d58f88dbcd00
 - **Workspace Groups**: Collections of workspaces. Available via API (not currently used).
 
 ## Available Tools

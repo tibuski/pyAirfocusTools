@@ -77,6 +77,7 @@ Please initialize the project and create the first tool.
     - Workspaces with users defined should appear in RED as I will use this tool to check that only groups have been used to grant access.
     - Item-Key should start with 'OKR' if not or empty, whole line appear in RED
     - Color should be either yellow, orange, great or blue, if not whole line appear in RED
+    - If not in RED, Workspaces names should appear in the color defined in the color field (yellow, orange, great=green or blue)
 - **Display**
   - By default, only Display workspaces with one of the coloring in RED. In this case, only display the Workspace name and the lines in RED.
   - Add an optional flag `--all` to display all workspaces regardless of coloring.

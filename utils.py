@@ -45,10 +45,6 @@ def load_config() -> Dict[str, str]:
         print(f"Error: Missing required configuration keys: {', '.join(missing_keys)}")
         sys.exit(1)
     
-    # Normalize base_url key
-    if 'baseurl' in config and 'base_url' not in config:
-        config['base_url'] = config['baseurl']
-    
     return config
 
 
@@ -73,8 +69,8 @@ def make_api_request(
         Parsed JSON response
     """
     config = load_config()
-    base_url = config['base_url'].rstrip('/')
-    url = f"{base_url}{endpoint}"
+    baseurl = config['baseurl'].rstrip('/')
+    url = f"{baseurl}{endpoint}"
     
     headers = {
         'Authorization': f"Bearer {config['apikey']}",
@@ -120,13 +116,8 @@ def load_registries(verify_ssl: bool = True):
     This implements the Registry Pattern to avoid multiple API calls.
     Call this function once at the start of your tool.
     
-<<<<<<< HEAD
     CRITICAL: User Groups (Global Teams) are NOT directly exposed via API.
     We discover them by scanning all workspace permissions for user group IDs.
-=======
-    CRITICAL: This fetches User Groups (Global Teams), NOT workspace groups.
-    User Groups are collections of users with shared permissions.
->>>>>>> e04d42e3a79cfc0f03a17dc72cc1d58f88dbcd00
     
     Args:
         verify_ssl: Whether to verify SSL certificates (default: True)
@@ -140,7 +131,6 @@ def load_registries(verify_ssl: bool = True):
     users = make_api_request('/api/team/users', verify_ssl=verify_ssl)
     _user_registry = {user['userId']: user for user in users}
     
-<<<<<<< HEAD
     # Discover user groups by scanning workspaces
     # User Groups are NOT available via API, but we can find their IDs in workspace permissions
     _group_registry = {}
@@ -184,19 +174,6 @@ def load_registries(verify_ssl: bool = True):
             'id': group_id,
             'name': f'UserGroup{idx:03d}'  # UserGroup001, UserGroup002, etc.
         }
-=======
-    # Fetch all user groups (Global Teams) - these are NOT available via API
-    # Must be configured manually in the config file
-    # The API does not expose user groups endpoints
-    _group_registry = {}
-    
-    # Load user group mappings from config file
-    config = load_config()
-    for key, value in config.items():
-        if key.startswith('usergroup_'):
-            group_id = key.replace('usergroup_', '')
-            _group_registry[group_id] = {'id': group_id, 'name': value}
->>>>>>> e04d42e3a79cfc0f03a17dc72cc1d58f88dbcd00
     
     _registries_loaded = True
 
@@ -224,13 +201,8 @@ def get_usergroup_name(group_id: str) -> str:
     """
     Resolve a user group ID to a human-readable name using the registry.
     
-<<<<<<< HEAD
     CRITICAL: User Groups (Global Teams) are NOT directly exposed via API.
     We discover them from workspace permissions and assign sequential names.
-=======
-    CRITICAL: This is for User Groups (Global Teams), NOT workspace groups.
-    User groups must be manually configured in the config file.
->>>>>>> e04d42e3a79cfc0f03a17dc72cc1d58f88dbcd00
     
     Args:
         group_id: UUID of the user group
@@ -241,23 +213,14 @@ def get_usergroup_name(group_id: str) -> str:
     if not _registries_loaded:
         load_registries()
     
-<<<<<<< HEAD
     # Check user groups discovered from workspaces
-=======
-    # Check user groups from config
->>>>>>> e04d42e3a79cfc0f03a17dc72cc1d58f88dbcd00
     group = _group_registry.get(group_id)
     if group:
         return group.get('name', f'UserGroup{len(_group_registry):03d}')
     
-<<<<<<< HEAD
     # Group not in registry - assign next number
     next_num = len(_group_registry) + 1
     return f'UserGroup{next_num:03d}'
-=======
-    # Group not in registry - not configured
-    return f"(Unknown Group: {group_id[:8]}...)"
->>>>>>> e04d42e3a79cfc0f03a17dc72cc1d58f88dbcd00
 
 
 # Alias for backward compatibility
@@ -385,7 +348,7 @@ def colorize(text: str, color: str) -> str:
     
     Args:
         text: Text to colorize
-        color: Color name (red, green, yellow, blue, magenta, cyan, white)
+        color: Color name (red, green, yellow, blue, magenta, cyan, white, orange)
     
     Returns:
         Text wrapped in ANSI color codes
@@ -398,6 +361,7 @@ def colorize(text: str, color: str) -> str:
         'magenta': '\033[95m',
         'cyan': '\033[96m',
         'white': '\033[97m',
+        'orange': '\033[38;5;208m',  # 256-color orange
         'reset': '\033[0m'
     }
     

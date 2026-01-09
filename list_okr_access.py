@@ -125,12 +125,28 @@ def format_workspace_access(
     item_key = workspace.get('alias', '')
     item_color = workspace.get('itemColor', '')
     
-    # Display in RED if it has user access
+    # Determine workspace color for all its properties
+    workspace_color = None
     if has_user_access:
-        ws_name = colorize(ws_name, 'red')
+        workspace_color = 'red'
         has_red_flag = True
+    else:
+        # Map item colors to terminal colors
+        color_mapping = {
+            'yellow': 'yellow',
+            'orange': 'orange',
+            'great': 'green',
+            'blue': 'blue'
+        }
+        if item_color and item_color in color_mapping:
+            workspace_color = color_mapping[item_color]
     
-    lines.append(f"{prefix}{ws_name}")
+    # Build the full line with prefix and apply color
+    full_line = f"{prefix}{ws_name}"
+    if workspace_color:
+        full_line = colorize(full_line, workspace_color)
+    
+    lines.append(full_line)
     
     # Get permissions from embedded data
     group_permissions = embedded.get('userGroupPermissions', {})
@@ -146,6 +162,8 @@ def format_workspace_access(
     if is_red:
         color_line = colorize(color_line, 'red')
         has_red_flag = True
+    elif workspace_color:
+        color_line = colorize(color_line, workspace_color)
     
     if show_all or is_red:
         lines.append(color_line)
@@ -156,6 +174,8 @@ def format_workspace_access(
     if is_red:
         key_line = colorize(key_line, 'red')
         has_red_flag = True
+    elif workspace_color:
+        key_line = colorize(key_line, workspace_color)
     
     if show_all or is_red:
         lines.append(key_line)
@@ -168,6 +188,8 @@ def format_workspace_access(
         if is_red:
             default_line = colorize(default_line, 'red')
             has_red_flag = True
+        elif workspace_color:
+            default_line = colorize(default_line, workspace_color)
         
         if show_all or is_red:
             lines.append(default_line)
@@ -180,7 +202,10 @@ def format_workspace_access(
     
     if user_perms_filtered:
         # Always show users section when there are users (it's a RED flag issue)
-        lines.append(f"{detail_indent}Users:")
+        users_header = f"{detail_indent}Users:"
+        if workspace_color:
+            users_header = colorize(users_header, workspace_color)
+        lines.append(users_header)
         # Sub-items get another level of dots
         sub_indent = ".." * (depth + 2)
         for user_id, permission in sorted(user_perms_filtered.items()):
@@ -194,7 +219,10 @@ def format_workspace_access(
     # Add group permissions after users
     if group_permissions:
         if show_all:
-            lines.append(f"{detail_indent}Groups:")
+            groups_header = f"{detail_indent}Groups:"
+            if workspace_color:
+                groups_header = colorize(groups_header, workspace_color)
+            lines.append(groups_header)
         
         # Sub-items get another level of dots
         sub_indent = ".." * (depth + 2)
@@ -214,16 +242,22 @@ def format_workspace_access(
                 highlight = True
                 has_red_flag = True
             
+            group_line = f"{sub_indent}{group_name}: {perm_str}"
+            
             if highlight:
-                group_name = colorize(group_name, 'red')
-                perm_str = colorize(perm_str, 'red')
+                group_line = colorize(group_line, 'red')
+            elif workspace_color:
+                group_line = colorize(group_line, workspace_color)
             
             if show_all or highlight:
                 if not show_all and highlight:
                     # Add Groups header only when showing RED group for first time
                     if f"{detail_indent}Groups:" not in lines:
-                        lines.append(f"{detail_indent}Groups:")
-                lines.append(f"{sub_indent}{group_name}: {perm_str}")
+                        groups_header = f"{detail_indent}Groups:"
+                        if workspace_color:
+                            groups_header = colorize(groups_header, workspace_color)
+                        lines.append(groups_header)
+                lines.append(group_line)
     
     return lines, has_red_flag
 
