@@ -43,9 +43,10 @@ You must adhere to this specific module structure:
 
 ---
 
-### CONTEXT FILES
+### CONTEXT FILES and RESOURCES
 - `openapi.json`: [Assume provided]
 - `hierarchy.png`: [Assume provided]
+- User Group names : The endpoint already exists, but it is indeed missing from the documentation.Can you try the following request? (no request body)POST /api/team/user-groups/search
 
 ---
 

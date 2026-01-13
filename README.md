@@ -77,8 +77,8 @@ uv run python list_okr_access.py --no-verify-ssl
 **`config`** - Configuration file (key = value format)
 
 **User Groups Discovery:**
-- **User Groups (Global Teams)**: NOT available via direct API endpoint. Discovered by scanning all workspace permissions for user group IDs.
-- Group names displayed as sequential numbers: `UserGroup001`, `UserGroup002`, etc. (no IDs shown per requirements)
+- **User Groups (Global Teams)**: Fetched via undocumented `POST /api/team/user-groups/search` endpoint
+- Group names resolved to actual names from API (e.g., SP_OKR_ERA_F_U, MT_ERA_Management_U)
 - **Workspace Groups**: Collections of workspaces. Available via API (not currently used).
 
 ## Available Tools
