@@ -233,8 +233,12 @@ def format_workspace_access(
             # Check if group name/permission mismatch - highlight in RED
             highlight = False
             
+            # Groups must start with SP_OKR_ OR be "Airfocus Admins"
+            if not group_name.startswith('SP_OKR_') and group_name != 'Airfocus Admins':
+                highlight = True
+                has_red_flag = True
             # Groups ending with _F should have Full access
-            if group_name.endswith('_F') and permission != 'full':
+            elif group_name.endswith('_F') and permission != 'full':
                 highlight = True
                 has_red_flag = True
             # Groups ending with _W should have Write access

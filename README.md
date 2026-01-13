@@ -56,6 +56,7 @@ uv run python list_okr_access.py --no-verify-ssl
 - Default permission ≠ 'Comment'
 - Item Key not starting with 'OKR'
 - Color not in {yellow, orange, great, blue}
+- Groups not starting with 'SP_OKR_' (except "Airfocus Admins")
 - Groups ending with '_F' without 'Full' access
 - Groups ending with '_W' without 'Write' access
 
@@ -78,8 +79,8 @@ uv run python list_okr_access.py --no-verify-ssl
 
 **User Groups Discovery:**
 - **User Groups (Global Teams)**: Fetched via undocumented `POST /api/team/user-groups/search` endpoint
-- Group names resolved to actual names from API (e.g., SP_OKR_ERA_F_U, MT_ERA_Management_U)
-- **Workspace Groups**: Collections of workspaces. Available via API (not currently used).
+- Group names resolved to actual names from API (e.g., SP_OKR_ERA_F, SP_OKR_ERA_W)
+- **Workspace Groups**: Collections of workspaces (different entity, not currently used)
 
 ## Available Tools
 
