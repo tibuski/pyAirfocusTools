@@ -64,6 +64,23 @@ uv run python list_okr_access.py --no-verify-ssl
 - Workspace names appear in their designated color when not flagged with RED
 - Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
 
+### list_contributors.py
+
+List all members of user groups starting with SP_OKR_ who have the contributor role.
+
+```bash
+uv run python list_contributors.py
+uv run python list_contributors.py --no-verify-ssl
+```
+
+**Options:**
+- `--no-verify-ssl`: Disable SSL certificate verification
+
+**Output Format:**
+- Contributors grouped by user group name
+- Full names displayed alphabetically within each group
+- Only groups with contributors are shown
+
 ## Architecture
 
 **`utils.py`** - Core library:
@@ -72,6 +89,8 @@ uv run python list_okr_access.py --no-verify-ssl
 - `api_get()` / `make_api_request()`: Centralized API calls with SSL option
 - `get_usergroup_name()`: Resolve user group IDs to names
 - `get_username_from_id()`: Resolve user IDs to names
+- `get_user_role()`: Get user role from registry
+- `get_groups_by_prefix()`: Get all groups starting with a prefix
 - `build_workspace_hierarchy()`: Build workspace tree structure
 - `colorize()`: ANSI color formatting
 
@@ -87,6 +106,7 @@ uv run python list_okr_access.py --no-verify-ssl
 | Tool | Description |
 |------|-------------|
 | `list_okr_access.py` | List OKR workspaces with access rights in hierarchical view |
+| `list_contributors.py` | List members of SP_OKR_ groups with contributor role |
 
 - `load_registries()` - **Registry Pattern**: Pre-fetch all users and groups once at startup
 - `make_api_request()` - Central API request handler with authentication

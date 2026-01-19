@@ -147,7 +147,8 @@ def load_registries(verify_ssl: bool = True):
             'id': group['id'],
             'name': group.get('name', 'Unknown Group'),
             'description': group.get('description', ''),
-            'archived': group.get('archived', False)
+            'archived': group.get('archived', False),
+            'userIds': group.get('_embedded', {}).get('userIds', [])
         }
         for group in user_groups
     }
@@ -201,6 +202,44 @@ def get_usergroup_name(group_id: str) -> str:
 
 # Alias for backward compatibility
 get_groupname_from_id = get_usergroup_name
+
+
+def get_user_role(user_id: str) -> str:
+    """
+    Get the role of a user from the registry.
+    
+    Args:
+        user_id: UUID of the user
+    
+    Returns:
+        User's role (admin, contributor, or editor), or empty string if not found
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    user = _user_registry.get(user_id)
+    if user:
+        return user.get('role', '')
+    return ''
+
+
+def get_groups_by_prefix(prefix: str) -> list:
+    """
+    Get all user groups whose name starts with the given prefix.
+    
+    Args:
+        prefix: The prefix to filter group names by
+    
+    Returns:
+        List of group dictionaries matching the prefix
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    return [
+        group for group in _group_registry.values()
+        if group.get('name', '').startswith(prefix)
+    ]
 
 
 def get_current_user_id(verify_ssl: bool = True) -> str:
