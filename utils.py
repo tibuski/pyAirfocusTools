@@ -242,6 +242,82 @@ def get_groups_by_prefix(prefix: str) -> list:
     ]
 
 
+def get_group_members(group_id: str) -> list:
+    """
+    Get all user IDs that are members of a specific user group.
+    
+    Args:
+        group_id: UUID of the user group
+    
+    Returns:
+        List of user IDs in the group
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    group = _group_registry.get(group_id)
+    if group:
+        return group.get('userIds', [])
+    return []
+
+
+def get_group_by_name(group_name: str) -> Optional[Dict[str, Any]]:
+    """
+    Find a user group by its exact name.
+    
+    Args:
+        group_name: Exact name of the group to find
+    
+    Returns:
+        Group dictionary if found, None otherwise
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    for group in _group_registry.values():
+        if group.get('name') == group_name:
+            return group
+    return None
+
+
+def set_user_role(user_id: str, role: str, verify_ssl: bool = True) -> bool:
+    """
+    Set the role of a user.
+    
+    Args:
+        user_id: UUID of the user
+        role: Role to set (admin, editor, or contributor)
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    valid_roles = ['admin', 'editor', 'contributor']
+    if role not in valid_roles:
+        print(f"Error: Invalid role '{role}'. Must be one of: {', '.join(valid_roles)}")
+        return False
+    
+    try:
+        make_api_request(
+            '/api/team/users/role',
+            method='POST',
+            data={
+                'userId': user_id,
+                'role': role
+            },
+            verify_ssl=verify_ssl
+        )
+        
+        # Update the registry cache
+        if user_id in _user_registry:
+            _user_registry[user_id]['role'] = role
+        
+        return True
+    except Exception as e:
+        print(f"Error setting role for user {user_id}: {e}")
+        return False
+
+
 def get_current_user_id(verify_ssl: bool = True) -> str:
     """
     Get the current authenticated user's ID from their profile.

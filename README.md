@@ -64,22 +64,50 @@ uv run python list_okr_access.py --no-verify-ssl
 - Workspace names appear in their designated color when not flagged with RED
 - Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
 
-### list_contributors.py
+### list_okr_contributors.py
 
-List all members of user groups starting with SP_OKR_ who have the contributor role.
+List all contributors in SP_OKR_ groups.
 
 ```bash
-uv run python list_contributors.py
-uv run python list_contributors.py --no-verify-ssl
+uv run python list_okr_contributors.py
+uv run python list_okr_contributors.py --no-verify-ssl
 ```
 
 **Options:**
 - `--no-verify-ssl`: Disable SSL certificate verification
 
-**Output Format:**
-- Contributors grouped by user group name
-- Full names displayed alphabetically within each group
-- Only groups with contributors are shown
+**Output:**
+- Groups contributors by user group name
+- Shows full name of each contributor
+- Only displays SP_OKR_ groups that have contributors
+
+### set_editor_role.py
+
+Set editor role for contributors in a specified user group. Does not modify admin users.
+
+```bash
+uv run python set_editor_role.py "SP_OKR_ERA_F"
+uv run python set_editor_role.py "SP_OKR_ERA_W" --dry-run
+uv run python set_editor_role.py "My Group" --no-verify-ssl
+```
+
+**Arguments:**
+- `group_name`: Name of the user group (required)
+
+**Options:**
+- `--dry-run`: Show what would be done without making changes
+- `--no-verify-ssl`: Disable SSL certificate verification
+
+**Behavior:**
+- Only updates users with 'contributor' role
+- Skips users who are already 'editor'
+- **NEVER modifies users with 'admin' role**
+- Skips users with any other role
+
+**Output:**
+- Shows each user being processed with their current role
+- Displays summary with success/skip/error counts
+- Color-coded status: GREEN (success), YELLOW (skipped), RED (failed)
 
 ## Architecture
 
@@ -91,6 +119,9 @@ uv run python list_contributors.py --no-verify-ssl
 - `get_username_from_id()`: Resolve user IDs to names
 - `get_user_role()`: Get user role from registry
 - `get_groups_by_prefix()`: Get all groups starting with a prefix
+- `get_group_members()`: Get all user IDs in a group
+- `get_group_by_name()`: Find group by exact name
+- `set_user_role()`: Update user's role (admin/editor/contributor)
 - `build_workspace_hierarchy()`: Build workspace tree structure
 - `colorize()`: ANSI color formatting
 
@@ -106,6 +137,8 @@ uv run python list_contributors.py --no-verify-ssl
 | Tool | Description |
 |------|-------------|
 | `list_okr_access.py` | List OKR workspaces with access rights in hierarchical view |
+| `list_okr_contributors.py` | List all contributors in SP_OKR_ groups |
+| `set_editor_role.py` | Set editor role for contributors in a specified group (protects admins) |
 | `list_contributors.py` | List members of SP_OKR_ groups with contributor role |
 
 - `load_registries()` - **Registry Pattern**: Pre-fetch all users and groups once at startup

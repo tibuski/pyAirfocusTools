@@ -98,3 +98,13 @@ If their role is contributor, list their full name grouped by group.
 
 **Step 2: Documentation**
 - Update the `README.md`.
+
+### Third TASK: Set Editor role
+**Step 1 : Create Tool `set_editor_role.py`*
+- **Objective:** Set editor role for members of a given group who have the role of contributor. Do not touch users with administrator role !
+   As usual, the functions to get users and group membership and to set the role should be part of utils.py as we could re-use this code later.
+** Logic
+The tool is run with a group name as argument. For every user in this group, set their role to editor.
+
+**Step 2: Documentation**
+- Update the `README.md`.
