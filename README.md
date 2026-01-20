@@ -64,14 +64,24 @@ uv run python list_okr_access.py --no-verify-ssl
 - Workspace names appear in their designated color when not flagged with RED
 - Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
 
-### list_okr_contributors.py
+### list_group_contributors.py
 
-List all contributors in SP_OKR_ groups.
+List all contributors in SP_OKR_ and SP_ProdMgt_ groups or a specific group.
 
 ```bash
-uv run python list_okr_contributors.py
-uv run python list_okr_contributors.py --no-verify-ssl
+# List contributors in all SP_OKR_ and SP_ProdMgt_ groups (default)
+uv run python list_group_contributors.py
+
+# List contributors in a specific group
+uv run python list_group_contributors.py "SP_OKR_ERA_F"
+
+# With SSL verification disabled
+uv run python list_group_contributors.py --no-verify-ssl
+uv run python list_group_contributors.py "My Group" --no-verify-ssl
 ```
+
+**Arguments:**
+- `group_name`: Optional - Name of a specific group to check (default: all SP_OKR_ and SP_ProdMgt_ groups)
 
 **Options:**
 - `--no-verify-ssl`: Disable SSL certificate verification
@@ -79,7 +89,7 @@ uv run python list_okr_contributors.py --no-verify-ssl
 **Output:**
 - Groups contributors by user group name
 - Shows full name of each contributor
-- Only displays SP_OKR_ groups that have contributors
+- Only displays groups that have contributors
 
 ### set_editor_role.py
 
@@ -137,7 +147,7 @@ uv run python set_editor_role.py "My Group" --no-verify-ssl
 | Tool | Description |
 |------|-------------|
 | `list_okr_access.py` | List OKR workspaces with access rights in hierarchical view |
-| `list_okr_contributors.py` | List all contributors in SP_OKR_ groups |
+| `list_group_contributors.py` | List all contributors in SP_OKR_ groups or a specific group |
 | `set_editor_role.py` | Set editor role for contributors in a specified group (protects admins) |
 | `list_contributors.py` | List members of SP_OKR_ groups with contributor role |
 
