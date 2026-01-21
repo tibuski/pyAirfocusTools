@@ -33,7 +33,7 @@ All tools are executed using `uv run`:
 
 ### list_okr_access.py
 
-List OKR workspaces with access rights in hierarchical view.
+List all OKR workspaces with access rights in hierarchical view.
 
 ```bash
 uv run python list_okr_access.py
@@ -42,8 +42,17 @@ uv run python list_okr_access.py --no-verify-ssl
 ```
 
 **Options:**
-- `--all`: Display all workspaces (default: only shows workspaces with validation issues)
+- `--all`: Display all OKR workspaces (default: only shows workspaces with validation issues)
 - `--no-verify-ssl`: Disable SSL certificate verification
+
+**Display Behavior:**
+- Default mode: Only displays workspaces with "(Wrong)" flags
+  - Shows only the lines with "(Wrong)" 
+  - Shows full parent hierarchy up to root (workspace names only)
+- `--all` mode: Displays all OKR workspaces with complete details
+
+**OKR Workspace Detection:**
+- Identifies workspaces by namespace field (e.g., "app:okr") or itemType containing 'okr'
 
 **Output Format:**
 - Hierarchy using '..' prefix (no dots for root level, all lines have dots)
@@ -52,17 +61,19 @@ uv run python list_okr_access.py --no-verify-ssl
 - Current user excluded from output
 
 **Validation (RED highlighting):**
-- Direct user access (should use groups)
-- Default permission ≠ 'Comment'
-- Item Key not starting with 'OKR'
-- Color not in {yellow, orange, great, blue}
-- Groups not starting with 'SP_OKR_' (except "Airfocus Admins")
-- Groups ending with '_F' without 'Full' access
-- Groups ending with '_W' without 'Write' access
+- Direct user access: Line shown in workspace color + " (Wrong)" in RED
+- Default permission ≠ 'Comment': Line shown in workspace color + " (Wrong)" in RED
+- Item Key not starting with 'OKR' or empty: Line shown in workspace color + " (Wrong)" in RED
+- Color invalid (not in {yellow, orange, great, blue} or empty): Entire line " (Wrong)" in RED
+- Groups not starting with 'SP_OKR_' (except "Airfocus Admins"): Line shown in workspace color + " (Wrong)" in RED
+- Groups ending with '_F' without 'Full' access: Line shown in workspace color + " (Wrong)" in RED
+- Groups ending with '_W' without 'Write' access: Line shown in workspace color + " (Wrong)" in RED
+- Workspace names: Shown in their designated color + " (Wrong)" in RED appended if any rule above applies
 
 **Color Display:**
-- Workspace names appear in their designated color when not flagged with RED
+- Workspace names and their details appear in designated color (yellow/orange/green/blue)
 - Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
+- Invalid items have " (Wrong)" appended in RED after the colored text
 
 ### list_group_contributors.py
 

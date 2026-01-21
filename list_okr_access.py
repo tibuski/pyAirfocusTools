@@ -26,6 +26,10 @@ def is_okr_workspace(workspace: Dict[str, Any]) -> bool:
     """
     Determine if a workspace is OKR-related.
     
+    OKR workspaces are identified by checking the namespace field.
+    The Item Key validation (should start with 'OKR') is a separate
+    validation rule applied to OKR workspaces.
+    
     Args:
         workspace: Workspace object from API
     
@@ -36,13 +40,13 @@ def is_okr_workspace(workspace: Dict[str, Any]) -> bool:
     namespace = workspace.get('namespace', '')
     
     # namespace can be a string like "app:okr"
-    if isinstance(namespace, str) and 'okr' in namespace:
+    if isinstance(namespace, str) and 'okr' in namespace.lower():
         return True
     
     # Or it might be a dict with typeId
     if isinstance(namespace, dict):
         type_id = namespace.get('typeId', '')
-        if 'okr' in type_id:
+        if 'okr' in type_id.lower():
             return True
     
     # Also check item type for OKR keywords
@@ -128,25 +132,21 @@ def format_workspace_access(
     # Determine workspace color for all its properties
     workspace_color = None
     if has_user_access:
-        workspace_color = 'red'
         has_red_flag = True
-    else:
-        # Map item colors to terminal colors
-        color_mapping = {
-            'yellow': 'yellow',
-            'orange': 'orange',
-            'great': 'green',
-            'blue': 'blue'
-        }
-        if item_color and item_color in color_mapping:
-            workspace_color = color_mapping[item_color]
     
-    # Build the full line with prefix and apply color
-    full_line = f"{prefix}{ws_name}"
-    if workspace_color:
-        full_line = colorize(full_line, workspace_color)
+    # Map item colors to terminal colors
+    color_mapping = {
+        'yellow': 'yellow',
+        'orange': 'orange',
+        'great': 'green',
+        'blue': 'blue'
+    }
+    if item_color and item_color in color_mapping:
+        workspace_color = color_mapping[item_color]
     
-    lines.append(full_line)
+    # We'll determine if workspace has errors later and append (Wrong) to workspace name if needed
+    # For now, just store the workspace name line - we'll finalize it after checking all rules
+    workspace_name_line = f"{prefix}{ws_name}"
     
     # Get permissions from embedded data
     group_permissions = embedded.get('userGroupPermissions', {})
@@ -155,24 +155,30 @@ def format_workspace_access(
     # Detail indent: ALL lines have dots - add one more level of dots for details
     detail_indent = ".." * (depth + 1)
     
-    # First: Color - RED whole line if not yellow, orange, great, or blue, or if empty
+    # First: Color - If invalid color, entire line in RED. Otherwise workspace color.
     valid_colors = ['yellow', 'orange', 'great', 'blue']
     color_line = f"{detail_indent}Color: {item_color if item_color else '(empty)'}"
     is_red = not item_color or item_color not in valid_colors
     if is_red:
-        color_line = colorize(color_line, 'red')
+        # Invalid color - entire line in RED including (Wrong)
+        color_line = colorize(f"{color_line} (Wrong)", 'red')
         has_red_flag = True
     elif workspace_color:
+        # Valid color - show in workspace color
         color_line = colorize(color_line, workspace_color)
     
     if show_all or is_red:
         lines.append(color_line)
     
-    # Second: Item Key - RED whole line if doesn't start with 'OKR' or is empty
+    # Second: Item Key - Show in workspace color, append (Wrong) in RED if invalid
     key_line = f"{detail_indent}Item Key: {item_key if item_key else '(empty)'}"
     is_red = not item_key or not item_key.startswith('OKR')
     if is_red:
-        key_line = colorize(key_line, 'red')
+        # Show line in workspace color, then append (Wrong) in RED
+        if workspace_color:
+            key_line = colorize(key_line, workspace_color) + colorize(" (Wrong)", 'red')
+        else:
+            key_line = colorize(f"{key_line} (Wrong)", 'red')
         has_red_flag = True
     elif workspace_color:
         key_line = colorize(key_line, workspace_color)
@@ -180,13 +186,17 @@ def format_workspace_access(
     if show_all or is_red:
         lines.append(key_line)
     
-    # Third: Access Rights - RED whole line if not 'comment'
+    # Third: Access Rights - Show in workspace color, append (Wrong) in RED if not 'comment'
     if default_permission:
         perm_display = format_permission(default_permission)
         default_line = f"{detail_indent}Default: {perm_display}"
         is_red = default_permission != 'comment'
         if is_red:
-            default_line = colorize(default_line, 'red')
+            # Show line in workspace color, then append (Wrong) in RED
+            if workspace_color:
+                default_line = colorize(default_line, workspace_color) + colorize(" (Wrong)", 'red')
+            else:
+                default_line = colorize(f"{default_line} (Wrong)", 'red')
             has_red_flag = True
         elif workspace_color:
             default_line = colorize(default_line, workspace_color)
@@ -211,9 +221,12 @@ def format_workspace_access(
         for user_id, permission in sorted(user_perms_filtered.items()):
             user_name = get_username_from_id(user_id)
             perm_str = format_permission(permission)
-            # Users in workspaces should always appear in RED
+            # Users in workspaces - show in workspace color, append (Wrong) in RED
             user_line = f"{sub_indent}{user_name}: {perm_str}"
-            user_line = colorize(user_line, 'red')
+            if workspace_color:
+                user_line = colorize(user_line, workspace_color) + colorize(" (Wrong)", 'red')
+            else:
+                user_line = colorize(f"{user_line} (Wrong)", 'red')
             lines.append(user_line)
     
     # Add group permissions after users
@@ -230,7 +243,7 @@ def format_workspace_access(
             group_name = get_usergroup_name(group_id)
             perm_str = format_permission(permission)
             
-            # Check if group name/permission mismatch - highlight in RED
+            # Check if group name/permission mismatch - show in workspace color + (Wrong) in RED
             highlight = False
             
             # Groups must start with SP_OKR_ OR be "Airfocus Admins"
@@ -249,7 +262,11 @@ def format_workspace_access(
             group_line = f"{sub_indent}{group_name}: {perm_str}"
             
             if highlight:
-                group_line = colorize(group_line, 'red')
+                # Show line in workspace color, then append (Wrong) in RED
+                if workspace_color:
+                    group_line = colorize(group_line, workspace_color) + colorize(" (Wrong)", 'red')
+                else:
+                    group_line = colorize(f"{group_line} (Wrong)", 'red')
             elif workspace_color:
                 group_line = colorize(group_line, workspace_color)
             
@@ -263,14 +280,69 @@ def format_workspace_access(
                         lines.append(groups_header)
                 lines.append(group_line)
     
+    # Finalize workspace name line: show in workspace color, append (Wrong) in RED if has_red_flag
+    if workspace_color:
+        workspace_name_line = colorize(workspace_name_line, workspace_color)
+        if has_red_flag:
+            workspace_name_line = workspace_name_line + colorize(" (Wrong)", 'red')
+    elif has_red_flag:
+        workspace_name_line = colorize(f"{workspace_name_line} (Wrong)", 'red')
+    
+    # Prepend workspace name to the beginning of lines
+    lines.insert(0, workspace_name_line)
+    
     return lines, has_red_flag
+
+
+def has_errors_in_subtree(
+    node: Dict[str, Any],
+    current_user_id: str,
+    visited: Set[str] = None
+) -> bool:
+    """
+    Check if this node or any descendant has validation errors.
+    
+    Args:
+        node: Node to check
+        current_user_id: ID of current user
+        visited: Set of visited workspace IDs to detect cycles
+    
+    Returns:
+        True if node or any descendant has errors
+    """
+    if visited is None:
+        visited = set()
+    
+    ws_id = node['workspace']['id']
+    if ws_id in visited:
+        return False
+    visited.add(ws_id)
+    
+    # Check if current workspace is OKR and has errors
+    if is_okr_workspace(node['workspace']):
+        _, has_red_flag = format_workspace_access(
+            node['workspace'],
+            current_user_id,
+            depth=0,
+            show_all=False
+        )
+        if has_red_flag:
+            return True
+    
+    # Check children recursively
+    for child in node.get('children', []):
+        if has_errors_in_subtree(child, current_user_id, visited):
+            return True
+    
+    return False
 
 
 def print_okr_hierarchy(
     node: Dict[str, Any],
     current_user_id: str,
     depth: int = 0,
-    show_all: bool = False
+    show_all: bool = False,
+    parent_has_error: bool = False
 ):
     """
     Recursively print OKR workspace hierarchy using '..' for depth levels.
@@ -280,6 +352,7 @@ def print_okr_hierarchy(
         current_user_id: ID of the current authenticated user
         depth: Current depth level in hierarchy
         show_all: If True, show all workspaces; if False, only show workspaces with RED flags
+        parent_has_error: If True, parent workspace has errors so we should show this node
     """
     workspace = node['workspace']
     
@@ -301,19 +374,36 @@ def print_okr_hierarchy(
             show_all
         )
         
-        # Display if show_all OR has RED flags
-        if show_all or has_red_flag:
+        # Check if any descendant has errors (needed for showing parent hierarchy)
+        descendant_has_error = any(
+            has_errors_in_subtree(child, current_user_id, set())
+            for child in node.get('children', [])
+        )
+        
+        # Display logic:
+        # - If show_all: display everything
+        # - If has_red_flag: display only lines with (Wrong)
+        # - If parent_has_error or descendant_has_error: display only workspace name (for hierarchy path)
+        if show_all:
             for line in lines:
                 print(line)
+        elif has_red_flag:
+            # Show only lines with (Wrong) - already filtered by format_workspace_access when show_all=False
+            for line in lines:
+                print(line)
+        elif parent_has_error or descendant_has_error:
+            # Parent or descendant has error, so show just workspace name (first line) to show hierarchy path
+            print(lines[0])
         
-        # Recursively print children
+        # Recursively print children - pass down if current or parent has error
         children = node.get('children', [])
         for child in children:
             print_okr_hierarchy(
                 child,
                 current_user_id,
                 depth + 1,
-                show_all
+                show_all,
+                parent_has_error=parent_has_error or has_red_flag or descendant_has_error
             )
         
         # Add empty line after root-level workspaces
@@ -358,7 +448,7 @@ def main():
     parser.add_argument(
         '--all',
         action='store_true',
-        help='Display all workspaces regardless of validation issues (default: only show workspaces with RED flags)'
+        help='Display all OKR workspaces (default: only show workspaces with (Wrong) flags, displaying only error lines and parent hierarchy)'
     )
     parser.add_argument(
         '--no-verify-ssl',
@@ -392,12 +482,12 @@ def main():
         # For --all flag, show everything
         if args.all:
             found_okr = True
-            print_okr_hierarchy(root, current_user_id, depth=0, show_all=True)
+            print_okr_hierarchy(root, current_user_id, depth=0, show_all=True, parent_has_error=False)
         else:
             # Only show if workspace or descendants are OKR
             if is_okr_workspace(root['workspace']) or has_okr_descendants(root, set()):
                 found_okr = True
-                print_okr_hierarchy(root, current_user_id, depth=0, show_all=False)
+                print_okr_hierarchy(root, current_user_id, depth=0, show_all=False, parent_has_error=False)
     
     if not found_okr:
         print("No OKR workspaces found.")
