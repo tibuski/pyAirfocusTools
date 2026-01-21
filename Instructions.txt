@@ -5,13 +5,15 @@ You are a Senior Python Tooling Engineer. You are tasked with creating a secure,
 **Data Integrity & Security:**
 - **Source of Truth:** Strictly follow the provided `openapi.json`.
 - **Disambiguation (CRITICAL):** The Airfocus API distinguishes between "User Groups" (Global Teams) and "Workspace Groups". You must **ALWAYS** target **User Groups**. Do not confuse them with workspace-specific item groups.
+- **User Groups Endpoint:** Use POST /api/team/user-groups/search (undocumented endpoint) to fetch User Groups with their actual names as displayed in the Airfocus web interface.
 - **No Hardcoding:** NEVER hardcode default values. ALL constants must be read from a file named `config` (`key = value`).
-- **TLS:** Always add option to ignore SSL certificate check errors to all tools.
+- **TLS:** Always add a `--no-verify-ssl` flag to all tools to optionally ignore SSL certificate verification errors (default: verify SSL).
 
 **Technology Stack:**
 - **Manager:** Use `uv` for dependency/virtual env management.
 - **Testing:** Use `uv run python [tool]` rather than setting venv.
 - **Libraries:** Priority = Python Standard Library. Use external libraries (e.g., `requests`) only when necessary.
+- **Scalability:** Tools must handle large datasets (16k+ users, deep hierarchies). Use appropriate recursion limits and pagination where needed.
 
 **Output Standards:**
 - **No IDs:** Never display user; user group or any item IDs. You must resolve these to Airfocus user group names as seen in the web interface
@@ -28,12 +30,12 @@ You must adhere to this specific module structure:
 - **Config:** `load_config()` to parse the `config` file.
 - **API:** Centralized `api_get()` function.
 - **Coloring:** coloring will be required in multiple tools and should be part of utils.py
-- **Hierarchy:** Hierarchy handling will be reaquired in multiple tools and should be part of utils.py. Use dots to fill increment for each depth level, 
-                 no dot for root level. All lines have dots.
-  Exemple :
-    Level 1 
+- **Hierarchy:** Hierarchy handling will be required in multiple tools and should be part of utils.py. Use '..' (two dots) to increment for each depth level. Root level (depth=0) has NO dots. Detail lines within a workspace get an additional level of dots beyond the workspace's depth level.
+  Example:
+    Level 1 (root - no dots)
     ..Level 2
     ....Level 3
+    ......Level 4 (details)
 
 **B. `config` (File)**
 - Simple `item = value` schema.
@@ -67,45 +69,55 @@ Please initialize the project and create the first tool.
   1. Load Config & Pre-fetch Registries (Users + User Groups).
   2. Traverse OKR ONLY workspace hierarchy.
   3. For every OKR ONLY workspace, list **User Groups** and **Users** with their permissions.
+  4. **OKR Detection:** A workspace is considered OKR if its 'namespace' field contains 'okr' (e.g., "app:okr") or its 'itemType' field contains 'okr'.
 - **Constraints:**
   - **Resolve IDs:** Use the Registry to display Names.
   - **Filter Me:** Exclude the current authenticated user's access line.
-  - **Visual:** Use global hierachy functions from `utils.py`.
-  - **Coloring:** 
-    - Workspaces Default access should be 'Comment', if not, (Wrong) appear in RED after the line in workspace color
-    - Groups name ending with _F should have access 'Full' if not, (Wrong) appear in RED after the line in workspace color
-    - Groups name ending with _W should have access 'Write' if not,(Wrong) appear in RED after the line in workspace color
-    - If a Group name does not start with SP_OKR_ or is not "Airfocus Admins", (Wrong) appear in RED after the line in workspace color
-    - Workspaces with users defined should have (Wrong) appear in RED after the line in workspace color as I will use this tool to check that only groups have been used to grant access.
-    - Item-Key should start with 'OKR' if not or empty, (Wrong) appear in RED after the line in workspace color
-    - Color should be either yellow, orange, great or blue, if not (Wrong) appear in RED 
-    - Workspaces names should always appear in the color defined in the color field (yellow, orange, great=green or blue) with (Wrong) appear in RED after the line in workspace color if any before rule applies.
+  - **Visual:** Use global hierarchy functions from `utils.py`.
+  - **Coloring Rules (All apply):**
+    1. **Workspace Names:** Always appear in their designated color (yellow, orange, great=green, blue). If any rule below applies, append " (Wrong)" in RED after the colored workspace name.
+    
+    2. **Invalid Color:** If color field is not one of {yellow, orange, great, blue} or is empty, the entire color line appears in RED with " (Wrong)".
+    
+    3. **Invalid Item-Key:** If Item-Key is empty or does not start with 'OKR', display the line in workspace color with " (Wrong)" appended in RED.
+    
+    4. **Wrong Default Access:** If Default access is not 'Comment', display the line in workspace color with " (Wrong)" appended in RED.
+    
+    5. **User Access Defined:** If any users (excluding current user) have access, display each user line in workspace color with " (Wrong)" appended in RED. This validates that only groups should be used to grant access.
+    
+    6. **Invalid Group Names:** If a Group name does not start with 'SP_OKR_' AND is not "Airfocus Admins", display the line in workspace color with " (Wrong)" appended in RED.
+    
+    7. **Group Suffix Mismatch:**
+       - Groups ending with '_F' must have 'Full' access, else display in workspace color with " (Wrong)" in RED
+       - Groups ending with '_W' must have 'Write' access, else display in workspace color with " (Wrong)" in RED
 - **Display**
-  - By default, only Display workspaces with (Wrong). Only display the lines with (Wrong). Display their full hierarchy up to the root.
+  - By default, only display workspaces with (Wrong). Within those workspaces, only display the lines with (Wrong). Display their full hierarchy path up to the root (workspace names only, without details).
   - Add an optional flag `--all` to display all workspaces regardless of coloring.
 
 **Step 3: Documentation**
 - Write/Update the `README.md`.
 
 ### Second TASK: Check user role
-**Step 1 : Create Tool `list_group_contributors.py`*
-- **Objective:** By default, list all member of groups names starting with "SP_OKR_" or "SP_ProdMgt_" that have the role of contributor.
+**Step 1 : Create Tool `list_group_contributors.py`**
+- **Objective:** By default, list all members of groups names starting with "SP_OKR_" or "SP_ProdMgt_" that have the role of contributor.
 Also give the option to list all contributor members of a given group.
-The functions to get users and group membership should be part as utils.py.
+The functions to get users and group membership should be part of utils.py.
 
-** Logic
-For every group starting by SP_OKR_, get all users and check if their role is contributor.
+**Logic:**
+For every group starting by SP_OKR_ or SP_ProdMgt_, get all users and check if their role is contributor.
 If their role is contributor, list their full name grouped by group.
 
 **Step 2: Documentation**
 - Update the `README.md`.
 
 ### Third TASK: Set Editor role
-**Step 1 : Create Tool `set_editor_role.py`*
+**Step 1 : Create Tool `set_editor_role.py`**
 - **Objective:** Set editor role for members of a given group who have the role of contributor. Do not touch users with administrator role !
    As usual, the functions to get users and group membership and to set the role should be part of utils.py as we could re-use this code later.
-** Logic
-The tool is run with a group name as argument. For every user in this group, set their role to editor.
+- **Optional Flag:** Add `--dry-run` flag to preview changes without executing them.
+
+**Logic:**
+The tool is run with a group name as argument. For every user in this group with 'contributor' role, set their role to 'editor'. Skip users who are already 'editor'. NEVER modify users with 'admin' role.
 
 **Step 2: Documentation**
 - Update the `README.md`.

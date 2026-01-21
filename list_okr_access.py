@@ -380,10 +380,17 @@ def print_okr_hierarchy(
             for child in node.get('children', [])
         )
         
-        # Display logic:
-        # - If show_all: display everything
-        # - If has_red_flag: display only lines with (Wrong)
-        # - If parent_has_error or descendant_has_error: display only workspace name (for hierarchy path)
+        # Display logic per Instructions.txt line 94:
+        # "By default, only display workspaces with (Wrong). Within those workspaces, 
+        # only display the lines with (Wrong). Display their full hierarchy path up to 
+        # the root (workspace names only, without details)."
+        #
+        # Implementation:
+        # - If show_all: display everything (--all flag overrides filtering)
+        # - If has_red_flag: display all lines with (Wrong) for this workspace
+        # - If parent_has_error or descendant_has_error: display only workspace name
+        #   This ensures the full hierarchy path is visible when any workspace in the
+        #   tree has errors, allowing users to see the complete path to problematic workspaces
         if show_all:
             for line in lines:
                 print(line)

@@ -1,6 +1,14 @@
 # pyAirfocusTools
 
-Secure, modular CLI toolset for interacting with the Airfocus API.
+Secure, modu### list_okr_access.py
+
+List all OKR workspaces with their access rights in hierarchical view.
+
+```bash
+uv run python list_okr_access.py [--all] [--no-verify-ssl]
+```
+
+**Options:**lset for interacting with the Airfocus API.
 
 ## Requirements
 
@@ -21,8 +29,8 @@ Secure, modular CLI toolset for interacting with the Airfocus API.
 
 3. **Configure API credentials**:
    
-   Create a `config` file in the project root:
-   ```ini
+   Create a `config` file in the project root with the following format:
+   ```
    apikey = your_airfocus_api_key_here
    baseurl = https://app.airfocus.com
    ```
@@ -46,9 +54,9 @@ uv run python list_okr_access.py --no-verify-ssl
 - `--no-verify-ssl`: Disable SSL certificate verification
 
 **Display Behavior:**
-- Default mode: Only displays workspaces with "(Wrong)" flags
-  - Shows only the lines with "(Wrong)" 
-  - Shows full parent hierarchy up to root (workspace names only)
+- Default mode: Only displays workspaces with validation issues
+  - Shows only lines with "(Wrong)" flags
+  - Shows full parent hierarchy up to root (workspace names only, without details)
 - `--all` mode: Displays all OKR workspaces with complete details
 
 **OKR Workspace Detection:**
@@ -80,15 +88,7 @@ uv run python list_okr_access.py --no-verify-ssl
 List all contributors in SP_OKR_ and SP_ProdMgt_ groups or a specific group.
 
 ```bash
-# List contributors in all SP_OKR_ and SP_ProdMgt_ groups (default)
-uv run python list_group_contributors.py
-
-# List contributors in a specific group
-uv run python list_group_contributors.py "SP_OKR_ERA_F"
-
-# With SSL verification disabled
-uv run python list_group_contributors.py --no-verify-ssl
-uv run python list_group_contributors.py "My Group" --no-verify-ssl
+uv run python list_group_contributors.py [group_name] [--no-verify-ssl]
 ```
 
 **Arguments:**
@@ -107,9 +107,7 @@ uv run python list_group_contributors.py "My Group" --no-verify-ssl
 Set editor role for contributors in a specified user group. Does not modify admin users.
 
 ```bash
-uv run python set_editor_role.py "SP_OKR_ERA_F"
-uv run python set_editor_role.py "SP_OKR_ERA_W" --dry-run
-uv run python set_editor_role.py "My Group" --no-verify-ssl
+uv run python set_editor_role.py <group_name> [--dry-run] [--no-verify-ssl]
 ```
 
 **Arguments:**
