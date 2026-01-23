@@ -1,14 +1,6 @@
 # pyAirfocusTools
 
-Secure, modu### list_okr_access.py
-
-List all OKR workspaces with their access rights in hierarchical view.
-
-```bash
-uv run python list_okr_access.py [--all] [--no-verify-ssl]
-```
-
-**Options:**lset for interacting with the Airfocus API.
+Secure, modular CLI toolset for interacting with the Airfocus API.
 
 ## Requirements
 
@@ -39,14 +31,14 @@ uv run python list_okr_access.py [--all] [--no-verify-ssl]
 
 All tools are executed using `uv run`:
 
-### list_okr_access.py
+### get_okr_compliance.py
 
-List all OKR workspaces with access rights in hierarchical view.
+Check OKR workspace compliance with access rules in hierarchical view.
 
 ```bash
-uv run python list_okr_access.py
-uv run python list_okr_access.py --all
-uv run python list_okr_access.py --no-verify-ssl
+uv run python get_okr_compliance.py
+uv run python get_okr_compliance.py --all
+uv run python get_okr_compliance.py --no-verify-ssl
 ```
 
 **Options:**
@@ -83,12 +75,12 @@ uv run python list_okr_access.py --no-verify-ssl
 - Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
 - Invalid items have " (Wrong)" appended in RED after the colored text
 
-### list_group_contributors.py
+### get_group_contributors.py
 
-List all contributors in SP_OKR_ and SP_ProdMgt_ groups or a specific group.
+Get all contributors in SP_OKR_ and SP_ProdMgt_ groups or a specific group.
 
 ```bash
-uv run python list_group_contributors.py [group_name] [--no-verify-ssl]
+uv run python get_group_contributors.py [group_name] [--no-verify-ssl]
 ```
 
 **Arguments:**
@@ -155,27 +147,9 @@ uv run python set_editor_role.py <group_name> [--dry-run] [--no-verify-ssl]
 
 | Tool | Description |
 |------|-------------|
-| `list_okr_access.py` | List OKR workspaces with access rights in hierarchical view |
-| `list_group_contributors.py` | List all contributors in SP_OKR_ groups or a specific group |
+| `get_okr_compliance.py` | Check OKR workspace compliance with access rules in hierarchical view |
+| `get_group_contributors.py` | Get all contributors in SP_OKR_/SP_ProdMgt_ groups or a specific group |
 | `set_editor_role.py` | Set editor role for contributors in a specified group (protects admins) |
-| `list_contributors.py` | List members of SP_OKR_ groups with contributor role |
-
-- `load_registries()` - **Registry Pattern**: Pre-fetch all users and groups once at startup
-- `make_api_request()` - Central API request handler with authentication
-- `get_username_from_id()` - Resolve user IDs to names (uses registry)
-- `get_groupname_from_id()` - Resolve group IDs to names (uses registry)
-- `get_current_user_id()` - Get authenticated user's ID
-- `build_workspace_hierarchy()` - Build parent-child tree structure from workspaces
-- `format_permission()` - Format permission values for display
-- `colorize()` - Apply ANSI color codes to text
-
-**Registry Pattern**: All tools call `load_registries()` at startup to pre-fetch users and user groups once, storing them in memory for efficient ID-to-name resolution.
-
-**Hierarchy Standard**: The `build_workspace_hierarchy()` function fetches workspace relations from the API and builds a recursive tree structure. Hierarchy display uses '..' for each depth level.
-
-**`config`** - Configuration file (key=value format):
-- `apikey` - Your Airfocus API key
-- `base_url` - Airfocus API base URL
 
 ## Security
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-List all OKR workspaces with their access rights in a hierarchical view.
+Check OKR workspace compliance with access rules in a hierarchical view.
 
 This tool traverses the workspace hierarchy, identifies OKR-related workspaces,
-and displays their access permissions for users and user groups.
+and validates their access permissions against defined rules.
 """
 
 import argparse
@@ -450,7 +450,7 @@ def has_okr_descendants(node: Dict[str, Any], visited: Set[str] = None) -> bool:
 def main():
     """Main entry point for the tool."""
     parser = argparse.ArgumentParser(
-        description='List OKR workspaces with their access rights in a hierarchical view.'
+        description='Check OKR workspace compliance with access rules in a hierarchical view.'
     )
     parser.add_argument(
         '--all',

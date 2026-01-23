@@ -60,8 +60,8 @@ Please initialize the project and create the first tool.
 - Implement `utils.py` with the **Registry Pattern**.
 - **Requirement:** Ensure the registry fetching logic specifically targets the endpoint for **User Groups**, not workspace groups.
 
-**Step 2: Create Tool `list_okr_access.py`**
-- **Objective:** List all and ONLY **OKR Workspaces** in a hierarchical view with :
+**Step 2: Create Tool `get_okr_compliance.py`**
+- **Objective:** List ONLY **OKR Workspaces** in a hierarchical view with :
     - First : Color : color name
     - Second : Item Key : Item
     - Third : Acces Rights
@@ -98,7 +98,7 @@ Please initialize the project and create the first tool.
 - Write/Update the `README.md`.
 
 ### Second TASK: Check user role
-**Step 1 : Create Tool `list_group_contributors.py`**
+**Step 1 : Create Tool `get_group_contributors.py`**
 - **Objective:** By default, list all members of groups names starting with "SP_OKR_" or "SP_ProdMgt_" that have the role of contributor.
 Also give the option to list all contributor members of a given group.
 The functions to get users and group membership should be part of utils.py.

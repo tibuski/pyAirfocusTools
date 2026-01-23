@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-List members with contributor role in SP_OKR_/SP_ProdMgt_ groups or a specific group.
+Get members with contributor role in SP_OKR_/SP_ProdMgt_ groups or a specific group.
 
 By default, lists all contributors in groups starting with SP_OKR_ or SP_ProdMgt_.
 Optionally, can list contributors in a specific group.
