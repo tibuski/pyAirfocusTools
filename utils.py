@@ -462,3 +462,154 @@ def colorize(text: str, color: str) -> str:
     if color_code:
         return f"{color_code}{text}{reset_code}"
     return text
+
+
+def get_team_info(verify_ssl: bool = True) -> Dict[str, Any]:
+    """
+    Get team information including license seat data.
+    
+    Args:
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        Team information dictionary containing seats data
+    """
+    return make_api_request('/api/team', verify_ssl=verify_ssl)
+
+
+def get_unique_members_by_prefix(prefix: str, exclude_suffix: Optional[str] = None) -> set:
+    """
+    Get unique user IDs across all groups matching a prefix pattern.
+    
+    Args:
+        prefix: The prefix to filter group names by (e.g., 'SP_OKR_')
+        exclude_suffix: Optional suffix to exclude groups (e.g., '_C_U')
+    
+    Returns:
+        Set of unique user IDs across all matching groups
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    unique_users = set()
+    
+    for group in _group_registry.values():
+        group_name = group.get('name', '')
+        
+        # Check if group matches prefix
+        if not group_name.startswith(prefix):
+            continue
+        
+        # Check if group should be excluded by suffix
+        if exclude_suffix and group_name.endswith(exclude_suffix):
+            continue
+        
+        # Add all user IDs from this group
+        user_ids = group.get('userIds', [])
+        unique_users.update(user_ids)
+    
+    return unique_users
+
+
+def get_groups_matching_pattern(prefix: str, exclude_suffix: Optional[str] = None) -> list:
+    """
+    Get all user groups matching a prefix pattern, optionally excluding groups with a specific suffix.
+    
+    Args:
+        prefix: The prefix to filter group names by (e.g., 'SP_OKR_')
+        exclude_suffix: Optional suffix to exclude groups (e.g., '_C_U')
+    
+    Returns:
+        List of group dictionaries matching the pattern
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    matching_groups = []
+    
+    for group in _group_registry.values():
+        group_name = group.get('name', '')
+        
+        # Check if group matches prefix
+        if not group_name.startswith(prefix):
+            continue
+        
+        # Check if group should be excluded by suffix
+        if exclude_suffix and group_name.endswith(exclude_suffix):
+            continue
+        
+        matching_groups.append(group)
+    
+    return matching_groups
+
+
+def get_users_not_in_groups(role: Optional[str] = None) -> set:
+    """
+    Get all users who are not members of any user group.
+    
+    Args:
+        role: Optional role filter (e.g., 'editor', 'contributor', 'admin')
+    
+    Returns:
+        Set of user IDs who are not in any group (and match role filter if specified)
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    # Collect all user IDs that are in at least one group
+    users_in_groups = set()
+    for group in _group_registry.values():
+        user_ids = group.get('userIds', [])
+        users_in_groups.update(user_ids)
+    
+    # Find users not in any group
+    users_not_in_groups = set()
+    for user_id, user in _user_registry.items():
+        if user_id not in users_in_groups:
+            # Apply role filter if specified
+            if role is None or user.get('role') == role:
+                users_not_in_groups.add(user_id)
+    
+    return users_not_in_groups
+
+
+def get_users_not_in_specific_groups(prefixes: list, exclude_suffix: Optional[str] = None, role: Optional[str] = None) -> set:
+    """
+    Get all users who are not members of groups matching specific prefixes.
+    
+    Args:
+        prefixes: List of group name prefixes to check (e.g., ['SP_OKR_', 'SP_ProdMgt_'])
+        exclude_suffix: Optional suffix to exclude from matching groups (e.g., '_C_U')
+        role: Optional role filter (e.g., 'editor', 'contributor', 'admin')
+    
+    Returns:
+        Set of user IDs who are not in any group matching the prefixes (and match role filter if specified)
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    # Collect all user IDs that are in groups matching the prefixes
+    users_in_matching_groups = set()
+    for group in _group_registry.values():
+        group_name = group.get('name', '')
+        
+        # Check if group matches any of the prefixes
+        matches_prefix = any(group_name.startswith(prefix) for prefix in prefixes)
+        
+        if matches_prefix:
+            # Check if we should exclude this group by suffix
+            if exclude_suffix and group_name.endswith(exclude_suffix):
+                continue
+            
+            user_ids = group.get('userIds', [])
+            users_in_matching_groups.update(user_ids)
+    
+    # Find users not in matching groups
+    users_not_in_matching_groups = set()
+    for user_id, user in _user_registry.items():
+        if user_id not in users_in_matching_groups:
+            # Apply role filter if specified
+            if role is None or user.get('role') == role:
+                users_not_in_matching_groups.add(user_id)
+    
+    return users_not_in_matching_groups

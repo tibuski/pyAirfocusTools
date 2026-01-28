@@ -121,3 +121,39 @@ The tool is run with a group name as argument. For every user in this group with
 
 **Step 2: Documentation**
 - Update the `README.md`.
+
+### Fourth TASK: License Usage Analysis
+**Step 1 : Create Tool `get_license_usage.py`**
+- **Objective:** 
+     - Analyze license usage across the Airfocus platform and provide a breakdown of total licenses, OKR licenses, Product Management licenses, and shared licenses.
+     - The functions to get group membership and calculate unique users should be part of utils.py as they could be re-used later.
+     - Add an option (--orphanded-editors)to list all editors that are not part of any group below the Analysis.
+
+
+**Logic:**
+1. **Total License State:** Query the `/api/team` endpoint and extract the 'any' part of the 'state.seats' section to display:
+   - Total licenses available
+   - Used licenses
+   - Free licenses
+   Format: `'any': {'total': 550, 'used': 245, 'free': 305}`
+
+2. **OKR Licensed Users:** Count the total of unique group members across all groups whose names start with "SP_OKR_". This represents the total OKR licensed users.
+
+3. **Product Management Licensed Users:** Count the total of unique group members across all groups whose names start with "SP_ProdMgt_" BUT do NOT end with "_C_U". This represents the total Product Management licensed users.
+
+4. **Shared License Users:** Count the total of unique users who appear in BOTH OKR groups (SP_OKR_*) AND Product Management groups (SP_ProdMgt_* excluding *_C_U). These users are counted in both categories above but only use one actual license.
+
+5. **Licensed users not in a group:** Count users who are not part of any groups (SP_OKR_*) OR Product Management groups (SP_ProdMgt_* excluding *_C_U) but still have a role of editor.
+
+**Output:**
+Display a clear summary showing:
+- Total Licenses (total, used, free)
+- Administrators: [admin role]
+- OKR Licensed Users: [count]
+- Product Management Licensed Users: [count]
+- Editors not in a group : [count]
+- Shared License Users (counted in both): [count]
+- Effective License Users: [OKR + ProdMgt + Editor + Administrators - Shared]
+
+**Step 2: Documentation**
+- Update the `README.md`.

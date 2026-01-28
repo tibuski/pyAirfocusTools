@@ -120,6 +120,36 @@ uv run python set_editor_role.py <group_name> [--dry-run] [--no-verify-ssl]
 - Displays summary with success/skip/error counts
 - Color-coded status: GREEN (success), YELLOW (skipped), RED (failed)
 
+### get_license_usage.py
+
+Analyze license usage across Airfocus platform with breakdown by OKR and Product Management groups.
+
+```bash
+uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
+```
+
+**Options:**
+- `--orphaned-editors`: List all editors who are not part of SP_OKR_ or SP_ProdMgt_ groups (below the analysis summary)
+- `--debug`: Show debug information about user and group counts
+- `--no-verify-ssl`: Disable SSL certificate verification
+
+**Analysis:**
+1. **Total Licenses**: Queries `/api/team` endpoint for seat data (total, used, free)
+2. **Administrators**: Counts all users with 'admin' role
+3. **OKR Licensed Users**: Counts unique members across all groups starting with `SP_OKR_`
+4. **Product Management Licensed Users**: Counts unique members across groups starting with `SP_ProdMgt_` (excluding groups ending with `_C_U`)
+5. **Editors not in OKR/ProdMgt groups**: Counts users with 'editor' role who are not members of SP_OKR_ or SP_ProdMgt_ groups (excluding *_C_U)
+6. **Shared License Users**: Identifies users appearing in both OKR and Product Management groups (counted in both but using single license)
+7. **Effective License Users**: Calculates actual unique users: Admins + OKR + ProdMgt + Editors - Shared
+
+**Output:**
+- Total license allocation (total, used, free)
+- License distribution by category (Administrators, OKR, ProdMgt, Editors not in OKR/ProdMgt)
+- Shared license count (users in multiple categories)
+- Effective license usage calculation
+- Discrepancy note if API-reported usage differs from calculated effective users
+- Optional: List of orphaned editors (when `--orphaned-editors` flag is used)
+
 ## Architecture
 
 **`utils.py`** - Core library:
@@ -133,6 +163,11 @@ uv run python set_editor_role.py <group_name> [--dry-run] [--no-verify-ssl]
 - `get_group_members()`: Get all user IDs in a group
 - `get_group_by_name()`: Find group by exact name
 - `set_user_role()`: Update user's role (admin/editor/contributor)
+- `get_team_info()`: Get team information including license seat data
+- `get_unique_members_by_prefix()`: Get unique user IDs across groups matching prefix
+- `get_groups_matching_pattern()`: Get groups by prefix with optional suffix exclusion
+- `get_users_not_in_groups()`: Get users not in any group, optionally filtered by role
+- `get_users_not_in_specific_groups()`: Get users not in groups matching specific prefixes, optionally filtered by role
 - `build_workspace_hierarchy()`: Build workspace tree structure
 - `colorize()`: ANSI color formatting
 
@@ -150,6 +185,7 @@ uv run python set_editor_role.py <group_name> [--dry-run] [--no-verify-ssl]
 | `get_okr_compliance.py` | Check OKR workspace compliance with access rules in hierarchical view |
 | `get_group_contributors.py` | Get all contributors in SP_OKR_/SP_ProdMgt_ groups or a specific group |
 | `set_editor_role.py` | Set editor role for contributors in a specified group (protects admins) |
+| `get_license_usage.py` | Analyze license usage across OKR and Product Management groups |
 
 ## Security
 
