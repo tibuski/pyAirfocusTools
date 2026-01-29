@@ -129,8 +129,8 @@ def display_license_summary(analysis: Dict[str, any]):
     
     print(colorize("\nLicense Distribution:", 'yellow'))
     print(f"  Administrators:                   {analysis['admin_count']}")
-    print(f"  SP_OKR Groups Users:              {analysis['okr_count']}")
-    print(f"  SP_ProdMgt Groups Users:          {analysis['prodmgt_count']}")
+    print(f"  SP_OKR Groups Editors:              {analysis['okr_count']}")
+    print(f"  SP_ProdMgt Groups Editors:          {analysis['prodmgt_count']}")
     print(f"  Duplicates (counted in both):     {analysis['shared_count']}")
     print(f"  Editors not in SP_OKR/SP_ProdMgt: {analysis['editors_not_in_groups_count']}")
     

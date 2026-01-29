@@ -205,3 +205,49 @@ Display a clear summary showing:
 
 **Step 2: Documentation**
 - Update the `README.md`.
+
+### Sixth TASK: Field Options Management
+**Step 1: Create Tool `set_field_options.py`**
+- **Objective:** Manage custom field options for Airfocus select/dropdown fields via CLI. Support viewing, adding, and reordering options.
+- **Functionality:**
+  - **View Mode:** When provided only a field name, fetch all existing options for that field, display them to the console (numbered list), and save them to `field_[field name without blank spaces]_options.txt`, one option per line.
+  - **Add Mode:** If a text file is provided as input (without `--reorder`), first save the current options to `field_[field name without blank spaces]_options.txt`, then add only the new options (those not already present) from the input file to the field. **The order of new options in the input file is preserved when adding them.**
+  - **Reorder Mode:** If `--reorder` flag is used with input file, reorder existing options based on the order in the input file. Options not in the input file are appended at the end. All option IDs are preserved (safe operation).
+  - **Show IDs:** Optional `--show-ids` flag displays option IDs alongside names in format: `Name [ID: xyz]`
+  - **Confirmation:** Before making any changes (adding or reordering options), display a summary and prompt the user to confirm (y/n).
+  - **Help:** If run without arguments, display a help message describing usage and options.
+- **Arguments:**
+  - `--field FIELD_NAME` (required): The name of the field to manage.
+  - `--input FILE` (optional): Path to a text file containing options (one per line).
+  - `--reorder` (optional): Reorder existing options based on input file order (requires `--input`).
+  - `--show-ids` (optional): Display option IDs alongside option names.
+  - `--no-verify-ssl` (optional): Ignore SSL certificate verification errors.
+- **Logic:**
+  1. Load config and pre-fetch registries as per standard pattern.
+  2. Validate that `--reorder` is only used with `--input`.
+  3. Check if field type supports options (select/dropdown types only).
+  4. **View Mode** (only `--field`): Fetch all current options, display to console (with optional IDs if `--show-ids`), and write names to `field_[field name without blank spaces]_options.txt`.
+  5. **Add Mode** (`--input` without `--reorder`): Fetch and save current options, read input file, compare, and add only new options in the order they appear in the input file (preserve input file order). Before adding, display the new options to be added and ask for confirmation.
+  6. **Reorder Mode** (`--input` + `--reorder`): Fetch current options, read input file, build new order based on input file, show preview of new order, ask for confirmation, then update field with reordered options (preserving all option IDs).
+  7. All API interactions and field option management logic must be implemented in `utils.py` for reuse.
+- **API Understanding:**
+  - Options are structured objects: `{id, name, description, default, color?, numericValue?}`
+  - Options array order in API determines display order
+  - Use `GET /api/fields/{fieldId}` to fetch full field configuration
+  - Use `PUT /api/fields/{fieldId}` (reconfigureField) to update field with new/reordered options
+  - New option IDs are generated sequentially from highest existing ID
+  - Reordering preserves all existing option IDs
+- **Constraints:**
+  - Never hardcode field names or option values.
+  - Always resolve field names to IDs using field search.
+  - All output files must be plain text, UTF-8 encoded, with one option per line (names only, no IDs in file).
+  - Preserve order from input file when adding new options.
+  - Preserve all option IDs when reordering.
+  - Follow all global architectural and security rules.
+- **Output:**
+  - Console display of current options (numbered, with optional IDs).
+  - Summary of actions taken (options fetched, options added with count, options reordered with count, file written).
+  - File saved to `field_[field name without blank spaces]_options.txt`.
+
+**Step 2: Documentation**
+- Update the `README.md`.

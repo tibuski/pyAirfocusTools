@@ -677,82 +677,6 @@ def build_folder_hierarchy(workspaces: list, verify_ssl: bool = True) -> Dict[st
     folder_children = {}  # folder_id -> [child_folder_ids]
     folder_parent = {}    # folder_id -> parent_folder_id
     
-    for folder_id, folder in folder_map.items():
-        parent_id = folder.get('parentId')
-        if parent_id:
-            if parent_id not in folder_children:
-                folder_children[parent_id] = []
-            folder_children[parent_id].append(folder_id)
-            folder_parent[folder_id] = parent_id
-    
-    # Find root folders (those without parents)
-    root_folder_ids = [f_id for f_id in folder_map.keys() if f_id not in folder_parent]
-    
-    # Find workspaces not in any folder (orphaned workspaces)
-    orphaned_workspace_ids = [ws_id for ws_id in workspace_map.keys() if ws_id not in workspace_to_folder]
-    
-    def build_folder_node(folder_id: str, visited: set = None) -> Dict[str, Any]:
-        """Build a folder node with its workspaces and subfolders."""
-        if visited is None:
-            visited = set()
-        
-        if folder_id in visited:
-            return {
-                'is_folder': True,
-                'folder_data': folder_map[folder_id],
-                'children': [],
-                'workspaces': []
-            }
-        
-        visited.add(folder_id)
-        
-        node = {
-            'is_folder': True,
-            'folder_data': folder_map[folder_id],
-            'children': [],  # Subfolders
-            'workspaces': []  # Workspaces directly in this folder
-        }
-        
-        # Add workspaces in this folder
-        for ws_id, f_id in workspace_to_folder.items():
-            if f_id == folder_id and ws_id in workspace_map:
-                node['workspaces'].append({
-                    'workspace': workspace_map[ws_id],
-                    'children': []
-                })
-        
-        # Add subfolders recursively
-        if folder_id in folder_children:
-            for child_folder_id in folder_children[folder_id]:
-                child_node = build_folder_node(child_folder_id, visited.copy())
-                node['children'].append(child_node)
-        
-        return node
-    
-    # Build root folder nodes
-    roots = []
-    for folder_id in root_folder_ids:
-        folder_node = build_folder_node(folder_id)
-        roots.append(folder_node)
-    
-    # Add orphaned workspaces at root level
-    for ws_id in orphaned_workspace_ids:
-        if ws_id in workspace_map:
-            roots.append({
-                'workspace': workspace_map[ws_id],
-                'children': []
-            })
-    
-    return {
-        'roots': roots,
-        'folder_map': folder_map
-    }
-
-    
-    # Build folder parent-child relationships (folders can be nested)
-    folder_children = {}  # folder_id -> [child_folder_ids]
-    folder_parent = {}    # folder_id -> parent_folder_id
-    
     for folder in folders:
         parent_id = folder.get('parentId')
         folder_id = folder['id']
@@ -824,3 +748,204 @@ def build_folder_hierarchy(workspaces: list, verify_ssl: bool = True) -> Dict[st
         'roots': roots,
         'folder_map': folder_map
     }
+
+def get_field_id_by_name(field_name: str, registries=None, verify_ssl=True) -> str:
+    """
+    Resolve a field name to its field ID using the registry/cache.
+    Args:
+        field_name: The name of the field to resolve.
+        registries: Optional pre-fetched registries (for testability).
+        verify_ssl: Whether to verify SSL certificates.
+    Returns:
+        Field ID as a string, or None if not found.
+    """
+    # Use the correct endpoint for searching fields
+    fields_response = make_api_request('/api/fields/search', method='POST', data={}, verify_ssl=verify_ssl)
+    fields = fields_response.get('items', []) if isinstance(fields_response, dict) else fields_response
+    for field in fields:
+        if field.get('name') == field_name:
+            return field.get('id')
+    return None
+
+
+def get_field_by_name(field_name: str, verify_ssl=True):
+    """
+    Retrieve full field configuration by field name.
+    Returns the complete field object or None if not found.
+    
+    Args:
+        field_name: The name of the field to find.
+        verify_ssl: Whether to verify SSL certificates.
+    
+    Returns:
+        Full field object with all configuration, or None if not found.
+    """
+    fields_response = make_api_request('/api/fields/search', method='POST', data={}, verify_ssl=verify_ssl)
+    fields = fields_response.get('items', []) if isinstance(fields_response, dict) else fields_response
+    
+    for field in fields:
+        if field.get('name') == field_name:
+            # Retrieve full field details with embedded data
+            field_id = field.get('id')
+            full_field = make_api_request(f'/api/fields/{field_id}', verify_ssl=verify_ssl)
+            return full_field
+    return None
+
+
+def get_field_options(field_id: str, verify_ssl=True, full_objects=False):
+    """
+    Fetch all options for a given select field ID.
+    
+    Args:
+        field_id: The ID of the field.
+        verify_ssl: Whether to verify SSL certificates.
+        full_objects: If True, return full option objects with IDs. If False, return just names.
+    
+    Returns:
+        List of option objects (if full_objects=True) or option names (if full_objects=False).
+    """
+    field = make_api_request(f'/api/fields/{field_id}', verify_ssl=verify_ssl)
+    settings = field.get('settings', {})
+    options = settings.get('options', [])
+    
+    if full_objects:
+        return options
+    else:
+        return [opt.get('name', '') for opt in options]
+
+
+def add_field_options(field_id: str, new_option_names: list, verify_ssl=True):
+    """
+    Add new options to a select field by reconfiguring it.
+    Fetches current field configuration, adds new options, and updates the field.
+    
+    Args:
+        field_id: The ID of the field.
+        new_option_names: List of new option names to add.
+        verify_ssl: Whether to verify SSL certificates.
+    """
+    # Fetch current field configuration
+    field = make_api_request(f'/api/fields/{field_id}', verify_ssl=verify_ssl)
+    
+    # Extract current settings and options
+    settings = field.get('settings', {})
+    current_options = settings.get('options', [])
+    
+    # Find the highest existing ID to generate new IDs
+    max_id = 0
+    for opt in current_options:
+        opt_id = opt.get('id', '')
+        if opt_id.isdigit():
+            max_id = max(max_id, int(opt_id))
+    
+    # Add new options with proper structure
+    for i, name in enumerate(new_option_names):
+        new_option = {
+            'id': str(max_id + i + 1),
+            'name': name,
+            'description': '',
+            'default': False
+        }
+        current_options.append(new_option)
+    
+    # Update settings with new options
+    settings['options'] = current_options
+    
+    # Prepare reconfigure request - include all required fields
+    reconfigure_data = {
+        'name': field.get('name'),
+        'description': field.get('description', ''),
+        'isTeamField': field.get('isTeamField', False),
+        'settings': settings
+    }
+    
+    # Only include 'required' if it exists in the original field
+    if 'required' in field:
+        reconfigure_data['required'] = field.get('required', False)
+    
+    # Update the field
+    make_api_request(
+        f'/api/fields/{field_id}',
+        method='PUT',
+        data=reconfigure_data,
+        verify_ssl=verify_ssl
+    )
+
+
+def reorder_field_options(field_id: str, ordered_option_names: list, verify_ssl=True):
+    """
+    Reorder options in a select field based on a list of option names.
+    Options not in the list will be appended at the end in their original order.
+    
+    Args:
+        field_id: The ID of the field.
+        ordered_option_names: List of option names in desired order.
+        verify_ssl: Whether to verify SSL certificates.
+    
+    Returns:
+        Tuple of (reordered_count, unchanged_count)
+    """
+    # Fetch current field configuration
+    field = make_api_request(f'/api/fields/{field_id}', verify_ssl=verify_ssl)
+    
+    # Extract current settings and options
+    settings = field.get('settings', {})
+    current_options = settings.get('options', [])
+    
+    # Create a mapping of name -> option object
+    options_by_name = {opt.get('name'): opt for opt in current_options}
+    
+    # Build new ordered list
+    reordered_options = []
+    found_names = set()
+    
+    # Add options in the specified order
+    for name in ordered_option_names:
+        if name in options_by_name:
+            reordered_options.append(options_by_name[name])
+            found_names.add(name)
+    
+    # Add any remaining options that weren't in the ordered list
+    for opt in current_options:
+        if opt.get('name') not in found_names:
+            reordered_options.append(opt)
+    
+    # Update settings with reordered options
+    settings['options'] = reordered_options
+    
+    # Prepare reconfigure request - include all required fields
+    reconfigure_data = {
+        'name': field.get('name'),
+        'description': field.get('description', ''),
+        'isTeamField': field.get('isTeamField', False),
+        'settings': settings
+    }
+    
+    # Only include 'required' if it exists in the original field
+    if 'required' in field:
+        reconfigure_data['required'] = field.get('required', False)
+    
+    # Update the field
+    make_api_request(
+        f'/api/fields/{field_id}',
+        method='PUT',
+        data=reconfigure_data,
+        verify_ssl=verify_ssl
+    )
+    
+    return len(found_names), len(current_options) - len(found_names)
+
+
+def supports_field_options(field_type_id: str) -> bool:
+    """
+    Check if a field type supports options (e.g., select, dropdown fields).
+    
+    Args:
+        field_type_id: The typeId of the field.
+    
+    Returns:
+        True if the field type supports options, False otherwise.
+    """
+    # Field types that support options based on the OpenAPI spec
+    option_types = {'select', 'dropdown', 'single-select', 'multi-select'}
+    return field_type_id.lower() in option_types

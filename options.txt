@@ -1,0 +1,20 @@
+Option1
+CCES – GGC
+CCES – SEED
+CCES – DER Connect
+PnP – Epic & traXes
+Pnp – Linx
+PnP – CC Platform
+PnP – CC Infrastructure
+BRP – Imbalance Price
+BSP – Explicit Flex
+Shared – AS Settlement
+Shared – AS Metering
+Shared – Metering
+Shared – Settlement BRP/GU/DSO
+Shared – Account Management
+GDA – DSO & ACH Services
+GDA – GU Services
+Transparency – Data Publications
+Transparency – Balancing data and reporting
+Option1

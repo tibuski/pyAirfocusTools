@@ -208,6 +208,68 @@ uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
 - Discrepancy note if API-reported usage differs from calculated effective users
 - Optional: List of orphaned editors (when `--orphaned-editors` flag is used)
 
+### set_field_options.py
+
+Manage custom field options for Airfocus select/dropdown fields via CLI. Supports viewing, adding, and reordering options.
+
+```bash
+# View current options (displays and saves to file)
+uv run python set_field_options.py --field <FIELD_NAME>
+
+# View with option IDs
+uv run python set_field_options.py --field <FIELD_NAME> --show-ids
+
+# Add new options from a file
+uv run python set_field_options.py --field <FIELD_NAME> --input <FILE>
+
+# Reorder existing options based on file order
+uv run python set_field_options.py --field <FIELD_NAME> --input <FILE> --reorder
+
+# Disable SSL verification
+uv run python set_field_options.py --field <FIELD_NAME> --no-verify-ssl
+```
+
+**Arguments:**
+- `--field FIELD_NAME` (required): The name of the field to manage.
+- `--input FILE` (optional): Path to a text file containing options (one per line).
+- `--reorder` (optional): Reorder existing options based on the order in the input file (requires `--input`).
+- `--show-ids` (optional): Display option IDs alongside option names.
+- `--no-verify-ssl` (optional): Disable SSL certificate verification.
+
+**Modes of Operation:**
+
+1. **View Mode** (only `--field`):
+   - Fetches all current options for the field
+   - Displays them to console (numbered list)
+   - Saves them to `field_[fieldname]_options.txt` (UTF-8, one per line)
+   - With `--show-ids`: Shows option IDs in format `Name [ID: xyz]`
+
+2. **Add Mode** (`--field` + `--input`):
+   - Fetches and saves current options
+   - Reads new options from input file
+   - Compares and identifies new options (not already present)
+   - Displays new options and prompts for confirmation
+   - Adds only new options to the field (preserves existing option IDs)
+
+3. **Reorder Mode** (`--field` + `--input` + `--reorder`):
+   - Reorders existing options based on the order in the input file
+   - Options not in the input file are appended at the end
+   - Preserves all option IDs (no IDs are changed)
+   - Displays the new order and prompts for confirmation
+   - Warns about options in input file that don't exist in the field
+
+**Important Notes:**
+- Only works with select/dropdown field types
+- Option IDs are preserved when reordering (safe operation)
+- New options get automatically generated IDs (sequential)
+- The output file always contains only option names (easy to edit and reuse)
+- All operations require confirmation before making changes
+
+**Output:**
+- Console display of current options (numbered, with optional IDs)
+- Summary of actions taken (options fetched, options added, options reordered, file written)
+- File saved to `field_[fieldname]_options.txt` (field name without spaces)
+
 ## Architecture
 
 **`utils.py`** - Core library:
@@ -228,6 +290,11 @@ uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
 - `get_users_not_in_specific_groups()`: Get users not in groups matching specific prefixes, optionally filtered by role
 - `build_workspace_hierarchy()`: Build workspace tree structure using parent-child relationships (for OKR workspaces)
 - `build_folder_hierarchy()`: Build workspace tree structure using folder-based organization (for Product Management workspaces)
+- `get_field_by_name()`: Retrieve full field configuration by name
+- `get_field_options()`: Fetch field options (as names or full objects with IDs)
+- `add_field_options()`: Add new options to a field (preserves existing option IDs)
+- `reorder_field_options()`: Reorder field options (preserves all option IDs)
+- `supports_field_options()`: Check if field type supports options
 - `colorize()`: ANSI color formatting
 
 **`config`** - Configuration file (key = value format)
@@ -246,6 +313,7 @@ uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
 | `get_group_contributors.py` | Get all contributors in SP_OKR_/SP_ProdMgt_ groups or a specific group |
 | `set_role.py` | Set role (editor or contributor) for group members (protects admins) |
 | `get_license_usage.py` | Analyze license usage across OKR and Product Management groups |
+| `set_field_options.py` | Manage custom field options for Airfocus fields via CLI |
 
 ## Security
 
