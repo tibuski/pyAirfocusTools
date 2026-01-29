@@ -95,24 +95,27 @@ uv run python get_group_contributors.py [group_name] [--no-verify-ssl]
 - Only displays groups that have contributors
 - Excludes SP_ProdMgt_ groups ending with _C_U when using default mode
 
-### set_editor_role.py
+### set_role.py
 
-Set editor role for contributors in a specified user group. Does not modify admin users.
+Set role (editor or contributor) for members in a specified user group. Does not modify admin users.
 
 ```bash
-uv run python set_editor_role.py <group_name> [--dry-run] [--no-verify-ssl]
+uv run python set_role.py <group_name> --role <editor|contributor> [--no-verify-ssl]
 ```
 
 **Arguments:**
 - `group_name`: Name of the user group (required)
 
 **Options:**
-- `--dry-run`: Show what would be done without making changes
+- `--role`: Target role to set - either 'editor' or 'contributor' (required)
 - `--no-verify-ssl`: Disable SSL certificate verification
 
 **Behavior:**
-- Only updates users with 'contributor' role
-- Skips users who are already 'editor'
+- Displays all planned changes and skipped users before execution
+- Prompts for confirmation (y/n) before applying any changes
+- If `--role editor`: Updates users with 'contributor' role to 'editor'
+- If `--role contributor`: Updates users with 'editor' role to 'contributor'
+- Skips users who already have the target role
 - **NEVER modifies users with 'admin' role**
 - Skips users with any other role
 
@@ -185,7 +188,7 @@ uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
 |------|-------------|
 | `get_okr_compliance.py` | Check OKR workspace compliance with access rules in hierarchical view |
 | `get_group_contributors.py` | Get all contributors in SP_OKR_/SP_ProdMgt_ groups or a specific group |
-| `set_editor_role.py` | Set editor role for contributors in a specified group (protects admins) |
+| `set_role.py` | Set role (editor or contributor) for group members (protects admins) |
 | `get_license_usage.py` | Analyze license usage across OKR and Product Management groups |
 
 ## Security
