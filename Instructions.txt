@@ -99,7 +99,7 @@ Please initialize the project and create the first tool.
 
 ### Second TASK: Check user role
 **Step 1 : Create Tool `get_group_contributors.py`**
-- **Objective:** By default, list all members of groups names starting with "SP_OKR_" or "SP_ProdMgt_" that have the role of contributor.
+- **Objective:** By default, list all members of groups names starting with "SP_OKR_" or "SP_ProdMgt_" BUT do NOT end with "_C_U" that have the role of contributor.
 Also give the option to list all contributor members of a given group.
 The functions to get users and group membership should be part of utils.py.
 

@@ -77,14 +77,14 @@ uv run python get_okr_compliance.py --no-verify-ssl
 
 ### get_group_contributors.py
 
-Get all contributors in SP_OKR_ and SP_ProdMgt_ groups or a specific group.
+Get all contributors in SP_OKR_ and SP_ProdMgt_ groups (excluding *_C_U) or a specific group.
 
 ```bash
 uv run python get_group_contributors.py [group_name] [--no-verify-ssl]
 ```
 
 **Arguments:**
-- `group_name`: Optional - Name of a specific group to check (default: all SP_OKR_ and SP_ProdMgt_ groups)
+- `group_name`: Optional - Name of a specific group to check (default: all SP_OKR_ and SP_ProdMgt_ groups, excluding *_C_U)
 
 **Options:**
 - `--no-verify-ssl`: Disable SSL certificate verification
@@ -93,6 +93,7 @@ uv run python get_group_contributors.py [group_name] [--no-verify-ssl]
 - Groups contributors by user group name
 - Shows full name of each contributor
 - Only displays groups that have contributors
+- Excludes SP_ProdMgt_ groups ending with _C_U when using default mode
 
 ### set_editor_role.py
 

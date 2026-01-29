@@ -2,7 +2,7 @@
 """
 Get members with contributor role in SP_OKR_/SP_ProdMgt_ groups or a specific group.
 
-By default, lists all contributors in groups starting with SP_OKR_ or SP_ProdMgt_.
+By default, lists all contributors in groups starting with SP_OKR_ or SP_ProdMgt_ (excluding *_C_U).
 Optionally, can list contributors in a specific group.
 """
 
@@ -13,6 +13,7 @@ from typing import Dict, List
 from utils import (
     load_registries,
     get_groups_by_prefix,
+    get_groups_matching_pattern,
     get_group_by_name,
     get_group_members,
     get_username_from_id,
@@ -59,7 +60,7 @@ def list_contributors_in_group(group_name: str, verify_ssl: bool = True) -> Dict
 
 def list_contributors_in_okr_groups(verify_ssl: bool = True) -> Dict[str, List[str]]:
     """
-    Find all SP_OKR_ and SP_ProdMgt_ groups and list their members with contributor role.
+    Find all SP_OKR_ and SP_ProdMgt_ groups (excluding *_C_U) and list their members with contributor role.
     
     Args:
         verify_ssl: Whether to verify SSL certificates (default: True)
@@ -70,9 +71,11 @@ def list_contributors_in_okr_groups(verify_ssl: bool = True) -> Dict[str, List[s
     # Load registries (users and groups)
     load_registries(verify_ssl=verify_ssl)
     
-    # Get all groups starting with SP_OKR_ or SP_ProdMgt_
+    # Get all groups starting with SP_OKR_
     okr_groups = get_groups_by_prefix('SP_OKR_')
-    prodmgt_groups = get_groups_by_prefix('SP_ProdMgt_')
+    
+    # Get all groups starting with SP_ProdMgt_ but NOT ending with _C_U
+    prodmgt_groups = get_groups_matching_pattern('SP_ProdMgt_', exclude_suffix='_C_U')
     
     # Combine both lists
     all_groups = okr_groups + prodmgt_groups
@@ -148,7 +151,7 @@ def main():
             display_contributors(contributors, group_name=args.group_name)
         else:
             # List contributors for all SP_OKR_ and SP_ProdMgt_ groups
-            print("Fetching contributors for all SP_OKR_ and SP_ProdMgt_ groups...")
+            print("Fetching contributors for all SP_OKR_ and SP_ProdMgt_ groups except those ending with '_C_U'...")
             contributors = list_contributors_in_okr_groups(verify_ssl=verify_ssl)
             display_contributors(contributors)
     except Exception as e:
