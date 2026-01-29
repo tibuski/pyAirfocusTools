@@ -163,3 +163,45 @@ Display a clear summary showing:
 
 **Step 2: Documentation**
 - Update the `README.md`.
+
+### Fifth TASK: Product Management Workspace Compliance
+**Step 1: Create Tool `get_prodmgt_compliance.py`**
+- **Objective:** List ONLY **Non-OKR Workspaces** in a hierarchical view with:
+    - First: Color : color name (display only, no validation)
+    - Second: Item Key : Item (display only, no validation)
+    - Third: Default Access (display only, no validation)
+    - Fourth: Access Rights (validate groups)
+- **Logic:**
+  1. Load Config & Pre-fetch Registries (Users + User Groups).
+  2. Traverse Product Management workspace hierarchy.
+  3. For every Product Management workspace AND every folder, list **User Groups** and **Users** with their permissions.
+  4. **Product Management Detection:** A workspace is considered Product Management if it is NOT an OKR workspace. Reuse the `is_okr_workspace()` function from `get_okr_compliance.py` and invert the logic (i.e., `not is_okr_workspace(workspace)`).
+  5. **Hierarchy Structure:** Non-OKR workspaces use FOLDER-BASED hierarchy, not parent-child workspace relationships. Use the `build_folder_hierarchy()` function from `utils.py` to properly organize and display these workspaces by their folder structure. Folders are displayed in the hierarchy and their permissions are validated using the same rules as workspaces.
+     
+     **Implementation:** The function fetches all workspace groups (folders) using `/api/workspaces/groups/search`, then retrieves full details with embedded data (including workspaces and permissions) using `/api/workspaces/groups/list` in a single batch request. This provides workspace-to-folder assignments via the `_embedded.workspaces` array in each folder's response.
+- **Constraints:**
+  - **Resolve IDs:** Use the Registry to display Names.
+  - **Filter Me:** Exclude the current authenticated user's access line.
+  - **Visual:** Use global hierarchy functions from `utils.py`. Folders create the hierarchy levels.
+  - **Coloring Rules (All apply to BOTH folders and workspaces):**
+    1. **Folder/Workspace Names:** 
+       - Folders: Always displayed with a 📁 folder icon prefix and in yellow color (representing the yellow-orange color of Windows folders)
+       - Workspaces: Always appear in their designated color (yellow, orange, great=green, blue)
+       - If any rule below applies, append " (Wrong)" in RED after the colored name.
+    
+    2. **Color, Item Key, Default Access:** Display these fields for information only (workspaces only - folders don't have these). No validation performed. Color is still used to determine the display color for workspace details.
+    
+    3. **User Access Defined:** If any users (excluding current user) have access to a folder or workspace, display each user line in workspace color with " (Wrong)" appended in RED. This validates that only groups should be used to grant access.
+    
+    4. **Invalid Group Names:** If a Group name does not start with 'SP_ProdMgt_' AND is not "Airfocus Admins", display the line in workspace/folder color with " (Wrong)" appended in RED.
+    
+    5. **Group Suffix Mismatch:**
+       - Groups ending with '_F_U' must have 'Full' access, else display in workspace/folder color with " (Wrong)" in RED
+       - Groups ending with '_W_U' must have 'Write' access, else display in workspace/folder color with " (Wrong)" in RED
+       - Groups ending with '_C_U' must have 'Comment' access, else display in workspace/folder color with " (Wrong)" in RED
+- **Display**
+  - By default, only display workspaces/folders with (Wrong). Within those items, only display the lines with (Wrong). Display their full hierarchy path up to the root (names only, without details).
+  - Add an optional flag `--all` to display all workspaces and folders regardless of coloring.
+
+**Step 2: Documentation**
+- Update the `README.md`.

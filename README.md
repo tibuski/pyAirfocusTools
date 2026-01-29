@@ -75,6 +75,60 @@ uv run python get_okr_compliance.py --no-verify-ssl
 - Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
 - Invalid items have " (Wrong)" appended in RED after the colored text
 
+### get_prodmgt_compliance.py
+
+Check Product Management workspace compliance with access rules in a hierarchical view. Product Management workspaces are organized using folder-based hierarchy.
+
+```bash
+uv run python get_prodmgt_compliance.py
+uv run python get_prodmgt_compliance.py --all
+uv run python get_prodmgt_compliance.py --no-verify-ssl
+```
+
+**Options:**
+- `--all`: Display all Product Management workspaces and folders (default: only shows items with validation issues)
+- `--no-verify-ssl`: Disable SSL certificate verification
+
+**Display Behavior:**
+- Default mode: Only displays workspaces/folders with validation issues
+  - Shows only lines with "(Wrong)" flags
+  - Shows full parent hierarchy up to root (names only, without details)
+- `--all` mode: Displays all Product Management workspaces and folders with complete details
+
+**Product Management Workspace Detection:**
+- Identifies workspaces as Product Management if they are NOT OKR workspaces (inverts OKR detection logic)
+- OKR workspaces are identified by namespace field containing 'okr' or itemType containing 'okr'
+
+**Hierarchy Structure:**
+- Uses folder-based organization (workspace groups) instead of parent-child relationships
+- Folders displayed with 📁 icon prefix in yellow color
+- Workspaces properly nested within folders based on workspace group assignments
+- Orphaned workspaces (not in any folder) shown at root level
+- Efficient batch fetching: All folders and their workspaces retrieved in single API call
+
+**Output Format:**
+- Hierarchy using '..' prefix (no dots for root level, all lines have dots)
+- Folders: 📁 icon + folder name in yellow
+- Workspaces: Order is Color → Item Key → Default Access → Access Rights (Groups/Users)
+- IDs resolved to human-readable names
+- Current user excluded from output
+
+**Validation (RED highlighting):**
+- **Note:** Color, Item Key, and Default Access are displayed for information only - no validation performed
+- **Folders and Workspaces both validated for:**
+  - Direct user access: Line shown in yellow (folders) or workspace color + " (Wrong)" in RED
+  - Groups not starting with 'SP_ProdMgt_' (except "Airfocus Admins"): Line shown in yellow/workspace color + " (Wrong)" in RED
+  - Groups ending with '_F_U' without 'Full' access: Line shown in yellow/workspace color + " (Wrong)" in RED
+  - Groups ending with '_W_U' without 'Write' access: Line shown in yellow/workspace color + " (Wrong)" in RED
+  - Groups ending with '_C_U' without 'Comment' access: Line shown in yellow/workspace color + " (Wrong)" in RED
+- Folder/Workspace names: Shown in their designated color + " (Wrong)" in RED appended if any validation rule above applies
+
+**Color Display:**
+- Folders: Yellow with 📁 icon (representing Windows folder color)
+- Workspace names and details: Appear in designated color (yellow/orange/green/blue)
+- Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
+- Invalid items have " (Wrong)" appended in RED after the colored text
+
 ### get_group_contributors.py
 
 Get all contributors in SP_OKR_ and SP_ProdMgt_ groups (excluding *_C_U) or a specific group.
@@ -172,7 +226,8 @@ uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
 - `get_groups_matching_pattern()`: Get groups by prefix with optional suffix exclusion
 - `get_users_not_in_groups()`: Get users not in any group, optionally filtered by role
 - `get_users_not_in_specific_groups()`: Get users not in groups matching specific prefixes, optionally filtered by role
-- `build_workspace_hierarchy()`: Build workspace tree structure
+- `build_workspace_hierarchy()`: Build workspace tree structure using parent-child relationships (for OKR workspaces)
+- `build_folder_hierarchy()`: Build workspace tree structure using folder-based organization (for Product Management workspaces)
 - `colorize()`: ANSI color formatting
 
 **`config`** - Configuration file (key = value format)
@@ -187,6 +242,7 @@ uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
 | Tool | Description |
 |------|-------------|
 | `get_okr_compliance.py` | Check OKR workspace compliance with access rules in hierarchical view |
+| `get_prodmgt_compliance.py` | Check Product Management workspace compliance with access rules in hierarchical view |
 | `get_group_contributors.py` | Get all contributors in SP_OKR_/SP_ProdMgt_ groups or a specific group |
 | `set_role.py` | Set role (editor or contributor) for group members (protects admins) |
 | `get_license_usage.py` | Analyze license usage across OKR and Product Management groups |

@@ -613,3 +613,214 @@ def get_users_not_in_specific_groups(prefixes: list, exclude_suffix: Optional[st
                 users_not_in_matching_groups.add(user_id)
     
     return users_not_in_matching_groups
+
+
+def build_folder_hierarchy(workspaces: list, verify_ssl: bool = True) -> Dict[str, Any]:
+    """
+    Build a hierarchical tree structure from a flat list of workspaces using folder (workspace group) relationships.
+    This is used for non-OKR workspaces which are organized by folders rather than parent-child workspace relationships.
+    
+    Args:
+        workspaces: List of workspace objects from the API
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        Dictionary with 'roots' (list of root nodes/folders) and 'folder_map' (folder_id -> folder_data)
+        Each node has structure: {'workspace': workspace_data, 'children': [child_nodes], 'is_folder': bool, 'folder_data': folder_info}
+    """
+    # Fetch all workspace groups (folders) with basic info
+    try:
+        response = make_api_request(
+            '/api/workspaces/groups/search',
+            method='POST',
+            data={},
+            verify_ssl=verify_ssl
+        )
+        folders_basic = response.get('items', [])
+    except Exception as e:
+        print(f"Warning: Could not fetch workspace groups: {e}")
+        folders_basic = []
+    
+    # Fetch all folders with embedded data (permissions and workspaces) in one batch request
+    folder_ids = [f['id'] for f in folders_basic]
+    folders_with_embed = {}
+    
+    if folder_ids:
+        try:
+            # Use list endpoint to get all folders with embedded data in one call
+            list_response = make_api_request(
+                '/api/workspaces/groups/list',
+                method='POST',
+                data=folder_ids,
+                verify_ssl=verify_ssl
+            )
+            # Response is an array of folders with embedded data
+            for folder in list_response:
+                if folder:  # Can be null for inaccessible folders
+                    folders_with_embed[folder['id']] = folder
+        except Exception as e:
+            print(f"Warning: Could not fetch folder details: {e}")
+    
+    # Create mappings
+    folder_map = folders_with_embed
+    workspace_map = {ws['id']: ws for ws in workspaces}
+    
+    # Build workspace_id -> folder_id mapping from embedded data
+    workspace_to_folder = {}
+    for folder_id, folder in folders_with_embed.items():
+        embedded = folder.get('_embedded', {})
+        folder_workspaces = embedded.get('workspaces', [])
+        for ws in folder_workspaces:
+            workspace_to_folder[ws['id']] = folder_id
+    
+    # Build folder parent-child relationships (folders can be nested)
+    folder_children = {}  # folder_id -> [child_folder_ids]
+    folder_parent = {}    # folder_id -> parent_folder_id
+    
+    for folder_id, folder in folder_map.items():
+        parent_id = folder.get('parentId')
+        if parent_id:
+            if parent_id not in folder_children:
+                folder_children[parent_id] = []
+            folder_children[parent_id].append(folder_id)
+            folder_parent[folder_id] = parent_id
+    
+    # Find root folders (those without parents)
+    root_folder_ids = [f_id for f_id in folder_map.keys() if f_id not in folder_parent]
+    
+    # Find workspaces not in any folder (orphaned workspaces)
+    orphaned_workspace_ids = [ws_id for ws_id in workspace_map.keys() if ws_id not in workspace_to_folder]
+    
+    def build_folder_node(folder_id: str, visited: set = None) -> Dict[str, Any]:
+        """Build a folder node with its workspaces and subfolders."""
+        if visited is None:
+            visited = set()
+        
+        if folder_id in visited:
+            return {
+                'is_folder': True,
+                'folder_data': folder_map[folder_id],
+                'children': [],
+                'workspaces': []
+            }
+        
+        visited.add(folder_id)
+        
+        node = {
+            'is_folder': True,
+            'folder_data': folder_map[folder_id],
+            'children': [],  # Subfolders
+            'workspaces': []  # Workspaces directly in this folder
+        }
+        
+        # Add workspaces in this folder
+        for ws_id, f_id in workspace_to_folder.items():
+            if f_id == folder_id and ws_id in workspace_map:
+                node['workspaces'].append({
+                    'workspace': workspace_map[ws_id],
+                    'children': []
+                })
+        
+        # Add subfolders recursively
+        if folder_id in folder_children:
+            for child_folder_id in folder_children[folder_id]:
+                child_node = build_folder_node(child_folder_id, visited.copy())
+                node['children'].append(child_node)
+        
+        return node
+    
+    # Build root folder nodes
+    roots = []
+    for folder_id in root_folder_ids:
+        folder_node = build_folder_node(folder_id)
+        roots.append(folder_node)
+    
+    # Add orphaned workspaces at root level
+    for ws_id in orphaned_workspace_ids:
+        if ws_id in workspace_map:
+            roots.append({
+                'workspace': workspace_map[ws_id],
+                'children': []
+            })
+    
+    return {
+        'roots': roots,
+        'folder_map': folder_map
+    }
+
+    
+    # Build folder parent-child relationships (folders can be nested)
+    folder_children = {}  # folder_id -> [child_folder_ids]
+    folder_parent = {}    # folder_id -> parent_folder_id
+    
+    for folder in folders:
+        parent_id = folder.get('parentId')
+        folder_id = folder['id']
+        if parent_id:
+            if parent_id not in folder_children:
+                folder_children[parent_id] = []
+            folder_children[parent_id].append(folder_id)
+            folder_parent[folder_id] = parent_id
+    
+    # Find root folders (those without parents)
+    root_folder_ids = [f_id for f_id in folder_map.keys() if f_id not in folder_parent]
+    
+    # Find workspaces not in any folder (orphaned workspaces)
+    orphaned_workspace_ids = [ws_id for ws_id in workspace_map.keys() if ws_id not in workspace_to_folder]
+    
+    def build_folder_node(folder_id: str, visited: set = None) -> Dict[str, Any]:
+        """Build a folder node with its workspaces and subfolders."""
+        if visited is None:
+            visited = set()
+        
+        if folder_id in visited:
+            return {
+                'is_folder': True,
+                'folder_data': folder_map[folder_id],
+                'children': [],
+                'workspaces': []
+            }
+        
+        visited.add(folder_id)
+        
+        node = {
+            'is_folder': True,
+            'folder_data': folder_map[folder_id],
+            'children': [],  # Subfolders
+            'workspaces': []  # Workspaces directly in this folder
+        }
+        
+        # Add workspaces in this folder
+        for ws_id, f_id in workspace_to_folder.items():
+            if f_id == folder_id and ws_id in workspace_map:
+                node['workspaces'].append({
+                    'workspace': workspace_map[ws_id],
+                    'children': []
+                })
+        
+        # Add subfolders recursively
+        if folder_id in folder_children:
+            for child_folder_id in folder_children[folder_id]:
+                child_node = build_folder_node(child_folder_id, visited.copy())
+                node['children'].append(child_node)
+        
+        return node
+    
+    # Build root folder nodes
+    roots = []
+    for folder_id in root_folder_ids:
+        folder_node = build_folder_node(folder_id)
+        roots.append(folder_node)
+    
+    # Add orphaned workspaces at root level
+    for ws_id in orphaned_workspace_ids:
+        if ws_id in workspace_map:
+            roots.append({
+                'workspace': workspace_map[ws_id],
+                'children': []
+            })
+    
+    return {
+        'roots': roots,
+        'folder_map': folder_map
+    }
