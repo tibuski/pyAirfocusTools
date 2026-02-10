@@ -94,10 +94,10 @@ def make_api_request(
         response.raise_for_status()
         return response.json() if response.content else {}
     except requests.exceptions.RequestException as e:
-        print(f"API request failed: {e}")
-        if hasattr(e.response, 'text'):
-            print(f"Response: {e.response.text}")
-        sys.exit(1)
+        error_msg = f"API request failed: {e}"
+        if hasattr(e, 'response') and e.response is not None and hasattr(e.response, 'text'):
+            error_msg += f"\nResponse: {e.response.text}"
+        raise Exception(error_msg)
 
 
 # Alias for clarity (as per instructions)

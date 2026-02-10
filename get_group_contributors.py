@@ -155,7 +155,9 @@ def main():
             contributors = list_contributors_in_okr_groups(verify_ssl=verify_ssl)
             display_contributors(contributors)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        print(f"\nError: {e}", file=sys.stderr)
+        print("\n" + "="*60, file=sys.stderr)
+        parser.print_help(sys.stderr)
         sys.exit(1)
 
 

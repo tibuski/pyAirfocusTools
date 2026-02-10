@@ -346,7 +346,9 @@ def main():
             display_orphaned_editors(editors_not_in_groups, verify_ssl=verify_ssl)
             
     except Exception as e:
-        print(colorize(f"Error: {e}", 'red'))
+        print(f"\nError: {e}", file=sys.stderr)
+        print("\n" + "="*60, file=sys.stderr)
+        parser.print_help(sys.stderr)
         sys.exit(1)
 
 

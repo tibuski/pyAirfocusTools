@@ -575,37 +575,44 @@ def main():
         action='store_true',
         help='Disable SSL certificate verification'
     )
+    
     args = parser.parse_args()
     
     verify_ssl = not args.no_verify_ssl
     
-    print("Loading registries (users & user groups)...")
-    load_registries(verify_ssl=verify_ssl)
+    try:
+        print("Loading registries (users & user groups)...")
+        load_registries(verify_ssl=verify_ssl)
     
-    print("Fetching workspaces...")
-    workspaces = get_all_workspaces(verify_ssl=verify_ssl)
+        print("Fetching workspaces...")
+        workspaces = get_all_workspaces(verify_ssl=verify_ssl)
     
-    print("Identifying current user...")
-    current_user_id = get_current_user_id(verify_ssl=verify_ssl)
+        print("Identifying current user...")
+        current_user_id = get_current_user_id(verify_ssl=verify_ssl)
     
-    print("Building folder hierarchy...")
-    hierarchy = build_folder_hierarchy(workspaces, verify_ssl=verify_ssl)
+        print("Building folder hierarchy...")
+        hierarchy = build_folder_hierarchy(workspaces, verify_ssl=verify_ssl)
     
-    print("\n" + "="*60)
-    print("PRODUCT MANAGEMENT WORKSPACES ACCESS REPORT")
-    print("="*60 + "\n")
+        print("\n" + "="*60)
+        print("PRODUCT MANAGEMENT WORKSPACES ACCESS REPORT")
+        print("="*60 + "\n")
     
-    # Process each root node (can be folders or orphaned workspaces)
-    found_items = False
-    roots = hierarchy['roots']
-    for root in roots:
-        found_items = True
-        print_folder_hierarchy(root, current_user_id, depth=0, show_all=args.all, parent_has_error=False, verify_ssl=verify_ssl)
+        # Process each root node (can be folders or orphaned workspaces)
+        found_items = False
+        roots = hierarchy['roots']
+        for root in roots:
+            found_items = True
+            print_folder_hierarchy(root, current_user_id, depth=0, show_all=args.all, parent_has_error=False, verify_ssl=verify_ssl)
     
-    if not found_items:
-        print("No Product Management workspaces or folders found.")
+        if not found_items:
+            print("No Product Management workspaces or folders found.")
     
-    print("="*60)
+        print("="*60)
+    except Exception as e:
+        print(f"\nError: {e}", file=sys.stderr)
+        print("\n" + "="*60, file=sys.stderr)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

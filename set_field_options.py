@@ -27,6 +27,12 @@ def main():
     parser.add_argument('--show-ids', action='store_true', help='Display option IDs alongside names.')
     parser.add_argument('--debug', action='store_true', help='Show debug information including API request data.')
     parser.add_argument('--no-verify-ssl', action='store_true', help='Ignore SSL certificate verification errors.')
+    
+    # Display help if no arguments provided
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+    
     args = parser.parse_args()
 
     # Display help if no field provided

@@ -462,44 +462,51 @@ def main():
         action='store_true',
         help='Disable SSL certificate verification'
     )
+    
     args = parser.parse_args()
     
     verify_ssl = not args.no_verify_ssl
     
-    print("Loading registries (users & user groups)...")
-    load_registries(verify_ssl=verify_ssl)
+    try:
+        print("Loading registries (users & user groups)...")
+        load_registries(verify_ssl=verify_ssl)
     
-    print("Fetching workspaces...")
-    workspaces = get_all_workspaces(verify_ssl=verify_ssl)
+        print("Fetching workspaces...")
+        workspaces = get_all_workspaces(verify_ssl=verify_ssl)
     
-    print("Identifying current user...")
-    current_user_id = get_current_user_id(verify_ssl=verify_ssl)
+        print("Identifying current user...")
+        current_user_id = get_current_user_id(verify_ssl=verify_ssl)
     
-    print("Building hierarchy...")
-    hierarchy = build_workspace_hierarchy(workspaces, verify_ssl=verify_ssl)
+        print("Building hierarchy...")
+        hierarchy = build_workspace_hierarchy(workspaces, verify_ssl=verify_ssl)
     
-    print("\n" + "="*60)
-    print("OKR WORKSPACES ACCESS REPORT")
-    print("="*60 + "\n")
+        print("\n" + "="*60)
+        print("OKR WORKSPACES ACCESS REPORT")
+        print("="*60 + "\n")
     
-    # Process each root workspace
-    found_okr = False
-    roots = hierarchy['roots']
-    for root in roots:
-        # For --all flag, show everything
-        if args.all:
-            found_okr = True
-            print_okr_hierarchy(root, current_user_id, depth=0, show_all=True, parent_has_error=False)
-        else:
-            # Only show if workspace or descendants are OKR
-            if is_okr_workspace(root['workspace']) or has_okr_descendants(root, set()):
+        # Process each root workspace
+        found_okr = False
+        roots = hierarchy['roots']
+        for root in roots:
+            # For --all flag, show everything
+            if args.all:
                 found_okr = True
-                print_okr_hierarchy(root, current_user_id, depth=0, show_all=False, parent_has_error=False)
+                print_okr_hierarchy(root, current_user_id, depth=0, show_all=True, parent_has_error=False)
+            else:
+                # Only show if workspace or descendants are OKR
+                if is_okr_workspace(root['workspace']) or has_okr_descendants(root, set()):
+                    found_okr = True
+                    print_okr_hierarchy(root, current_user_id, depth=0, show_all=False, parent_has_error=False)
     
-    if not found_okr:
-        print("No OKR workspaces found.")
+        if not found_okr:
+            print("No OKR workspaces found.")
     
-    print("="*60)
+        print("="*60)
+    except Exception as e:
+        print(f"\nError: {e}", file=sys.stderr)
+        print("\n" + "="*60, file=sys.stderr)
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

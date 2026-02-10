@@ -91,6 +91,12 @@ def main():
         action='store_true',
         help='Disable SSL certificate verification'
     )
+    
+    # Display help if no arguments provided
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+    
     args = parser.parse_args()
     
     verify_ssl = not args.no_verify_ssl
