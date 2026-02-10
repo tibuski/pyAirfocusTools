@@ -1072,3 +1072,77 @@ def get_user_workspace_groups(user_id: str, verify_ssl: bool = True) -> list:
             pass
     
     return user_folders
+
+
+def build_user_access_mappings(verify_ssl: bool = True) -> dict:
+    """
+    Build mappings of user IDs to their accessible workspaces and folders.
+    Fetches all workspaces and folders once, then builds in-memory mappings for efficient lookup.
+    
+    This is a performance-optimized approach that avoids per-user API calls.
+    
+    Args:
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        Dictionary with:
+        - 'user_to_workspaces': dict mapping user_id -> [workspace objects]
+        - 'user_to_folders': dict mapping user_id -> [folder objects]
+        - 'all_workspaces': list of all workspace objects
+        - 'full_hierarchy': full folder hierarchy structure
+    """
+    print("  Fetching all workspaces...")
+    # Fetch ALL workspaces once
+    all_workspaces = []
+    offset = 0
+    limit = 1000
+    while True:
+        response = make_api_request(
+            '/api/workspaces/search',
+            method='POST',
+            data={
+                'archived': False,
+                'sort': {'type': 'name', 'direction': 'asc'}
+            },
+            params={'offset': offset, 'limit': limit},
+            verify_ssl=verify_ssl
+        )
+        items = response.get('items', [])
+        all_workspaces.extend(items)
+        total_items = response.get('totalItems', 0)
+        if offset + limit >= total_items:
+            break
+        offset += limit
+    
+    print("  Building folder hierarchy...")
+    # Build folder hierarchy once
+    full_hierarchy = build_folder_hierarchy(all_workspaces, verify_ssl=verify_ssl)
+    
+    print("  Analyzing user access...")
+    # Build user -> workspace mapping
+    user_to_workspaces = {}
+    for workspace in all_workspaces:
+        embedded = workspace.get('_embedded', {})
+        user_permissions = embedded.get('permissions', {})
+        for user_id in user_permissions.keys():
+            if user_id not in user_to_workspaces:
+                user_to_workspaces[user_id] = []
+            user_to_workspaces[user_id].append(workspace)
+    
+    # Build user -> folder mapping
+    user_to_folders = {}
+    folder_map = full_hierarchy.get('folder_map', {})
+    for folder_id, folder_data in folder_map.items():
+        embedded = folder_data.get('_embedded', {})
+        user_permissions = embedded.get('permissions', {})
+        for user_id in user_permissions.keys():
+            if user_id not in user_to_folders:
+                user_to_folders[user_id] = []
+            user_to_folders[user_id].append(folder_data)
+    
+    return {
+        'user_to_workspaces': user_to_workspaces,
+        'user_to_folders': user_to_folders,
+        'all_workspaces': all_workspaces,
+        'full_hierarchy': full_hierarchy
+    }

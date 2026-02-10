@@ -151,17 +151,22 @@ uv run python get_group_contributors.py [group_name] [--no-verify-ssl]
 
 ### set_role.py
 
-Set role (editor or contributor) for members in a specified user group. Does not modify admin users.
+Set role (editor or contributor) for members in a specified user group or for orphaned users. Does not modify admin users.
 
 ```bash
+# Set role for a specific group
 uv run python set_role.py <group_name> --role <editor|contributor> [--no-verify-ssl]
+
+# Set role for orphaned users (no workspace/folder access)
+uv run python set_role.py --orphaned --role <editor|contributor> [--no-verify-ssl]
 ```
 
 **Arguments:**
-- `group_name`: Name of the user group (required)
+- `group_name`: Name of the user group (required unless using `--orphaned`)
 
 **Options:**
 - `--role`: Target role to set - either 'editor' or 'contributor' (required)
+- `--orphaned`: Target orphaned users instead of a group (users not in SP_OKR_/SP_ProdMgt_ groups with zero workspace/folder access)
 - `--no-verify-ssl`: Disable SSL certificate verification
 
 **Behavior:**
@@ -172,6 +177,14 @@ uv run python set_role.py <group_name> --role <editor|contributor> [--no-verify-
 - Skips users who already have the target role
 - **NEVER modifies users with 'admin' role**
 - Skips users with any other role
+
+**Orphaned Users Mode** (with `--orphaned` flag):
+- Identifies editors not in SP_OKR_ or SP_ProdMgt_ groups (excluding *_C_U)
+- Fetches all workspaces and folders to analyze access
+- Only targets users with ZERO workspace access AND ZERO folder access
+- Shows each user with their access counts before prompting for confirmation
+- Optimized performance: fetches data once, filters in memory
+- Useful for downgrading licenses of truly unused accounts
 
 **Output:**
 - Shows each user being processed with their current role
@@ -312,6 +325,7 @@ uv run python set_field_options.py --field <FIELD_NAME> --no-verify-ssl
 - `get_users_not_in_specific_groups()`: Get users not in groups matching specific prefixes, optionally filtered by role
 - `build_workspace_hierarchy()`: Build workspace tree structure using parent-child relationships (for OKR workspaces)
 - `build_folder_hierarchy()`: Build folder-based workspace tree with batch folder fetching (for Product Management workspaces)
+- `build_user_access_mappings()`: Build optimized mappings of users to their accessible workspaces/folders (shared by multiple tools)
 - `get_field_by_name()`: Retrieve full field configuration by name
 - `get_field_options()`: Fetch field options (as names or full objects with IDs)
 - `add_field_options()`: Add new options to a field (preserves existing option IDs)

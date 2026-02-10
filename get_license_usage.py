@@ -22,8 +22,7 @@ from utils import (
     get_users_not_in_groups,
     get_users_not_in_specific_groups,
     get_username_from_id,
-    colorize,
-    make_api_request
+    colorize
 )
 
 
@@ -162,61 +161,15 @@ def display_orphaned_editors(editors_not_in_groups: set, verify_ssl: bool = True
         print(colorize("\nNo orphaned editors found.", 'green'))
         return
     
-    from utils import build_folder_hierarchy
+    from utils import build_user_access_mappings
     
     print(colorize(f"\n=== Orphaned Editors (Not in SP_OKR_/SP_ProdMgt_): {len(editors_not_in_groups)} ===\n", 'yellow'))
     
-    # Fetch ALL workspaces once to build the hierarchy (performance optimization)
-    print("  Fetching all workspaces for hierarchy...")
-    all_workspaces = []
-    offset = 0
-    limit = 1000
-    while True:
-        response = make_api_request(
-            '/api/workspaces/search',
-            method='POST',
-            data={
-                'archived': False,
-                'sort': {'type': 'name', 'direction': 'asc'}
-            },
-            params={'offset': offset, 'limit': limit},
-            verify_ssl=verify_ssl
-        )
-        items = response.get('items', [])
-        all_workspaces.extend(items)
-        total_items = response.get('totalItems', 0)
-        if offset + limit >= total_items:
-            break
-        offset += limit
-    
-    # Build folder hierarchy once for all users
-    print("  Building folder hierarchy...")
-    full_hierarchy = build_folder_hierarchy(all_workspaces, verify_ssl=verify_ssl)
-    
-    # Pre-filter workspaces and folders by user access (in-memory, no API calls)
-    # This is much faster than calling get_user_workspaces() per user
-    print("  Analyzing user access...")
-    
-    # Build user -> workspace mapping from all_workspaces
-    user_to_workspaces = {}
-    for workspace in all_workspaces:
-        embedded = workspace.get('_embedded', {})
-        user_permissions = embedded.get('permissions', {})
-        for user_id in user_permissions.keys():
-            if user_id not in user_to_workspaces:
-                user_to_workspaces[user_id] = []
-            user_to_workspaces[user_id].append(workspace)
-    
-    # Build user -> folder mapping from full_hierarchy folder_map
-    user_to_folders = {}
-    folder_map = full_hierarchy.get('folder_map', {})
-    for folder_id, folder_data in folder_map.items():
-        embedded = folder_data.get('_embedded', {})
-        user_permissions = embedded.get('permissions', {})
-        for user_id in user_permissions.keys():
-            if user_id not in user_to_folders:
-                user_to_folders[user_id] = []
-            user_to_folders[user_id].append(folder_data)
+    # Use shared function to build access mappings (performance optimized, no duplication!)
+    access_data = build_user_access_mappings(verify_ssl=verify_ssl)
+    user_to_workspaces = access_data['user_to_workspaces']
+    user_to_folders = access_data['user_to_folders']
+    full_hierarchy = access_data['full_hierarchy']
     
     # Sort by username for consistent output
     editor_list = sorted([

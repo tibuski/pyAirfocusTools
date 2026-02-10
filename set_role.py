@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Set role (editor or contributor) for members in a given user group.
+Set role (editor or contributor) for members in a given user group or for orphaned users.
 
 This tool updates the role of users in a specified group to a target role.
+Can also target orphaned users (not in SP_OKR_/SP_ProdMgt_ groups with no workspace/folder access).
 Does not modify users with admin role.
 """
 
@@ -16,24 +17,74 @@ from utils import (
     get_username_from_id,
     get_user_role,
     set_user_role,
-    colorize
+    colorize,
+    get_users_not_in_specific_groups,
+    build_user_access_mappings
 )
+
+
+def get_orphaned_users(verify_ssl: bool = True) -> dict:
+    """
+    Get all users who are not in SP_OKR_/SP_ProdMgt_ groups AND have no workspace/folder access.
+    
+    Args:
+        verify_ssl: Whether to verify SSL certificates
+    
+    Returns:
+        Dictionary mapping user_id -> {'name': str, 'workspace_count': int, 'folder_count': int}
+    """
+    # Get editors not in SP_OKR_/SP_ProdMgt_ groups
+    editors_not_in_groups = get_users_not_in_specific_groups(
+        prefixes=['SP_OKR_', 'SP_ProdMgt_'],
+        exclude_suffix='_C_U',
+        role='editor'
+    )
+    
+    if not editors_not_in_groups:
+        return {}
+    
+    # Use shared function to build access mappings (no duplication!)
+    access_data = build_user_access_mappings(verify_ssl=verify_ssl)
+    user_to_workspaces = access_data['user_to_workspaces']
+    user_to_folders = access_data['user_to_folders']
+    
+    # Filter for truly orphaned users (no workspace or folder access)
+    orphaned_users = {}
+    for user_id in editors_not_in_groups:
+        workspace_count = len(user_to_workspaces.get(user_id, []))
+        folder_count = len(user_to_folders.get(user_id, []))
+        
+        # Only include users with ZERO access
+        if workspace_count == 0 and folder_count == 0:
+            orphaned_users[user_id] = {
+                'name': get_username_from_id(user_id),
+                'workspace_count': workspace_count,
+                'folder_count': folder_count
+            }
+    
+    return orphaned_users
 
 
 def main():
     """Main entry point for the tool."""
     parser = argparse.ArgumentParser(
-        description='Set role (editor or contributor) for members in a given user group. Does not modify admin users.'
+        description='Set role (editor or contributor) for members in a user group or for orphaned users. Does not modify admin users.'
     )
     parser.add_argument(
         'group_name',
-        help='Name of the user group (e.g., SP_OKR_ERA_F)'
+        nargs='?',
+        help='Name of the user group (e.g., SP_OKR_ERA_F). Not required when using --orphaned.'
     )
     parser.add_argument(
         '--role',
         required=True,
         choices=['editor', 'contributor'],
         help='Target role to set (editor or contributor)'
+    )
+    parser.add_argument(
+        '--orphaned',
+        action='store_true',
+        help='Target orphaned users (not in SP_OKR_/SP_ProdMgt_ groups with zero workspace/folder access)'
     )
     parser.add_argument(
         '--no-verify-ssl',
@@ -44,6 +95,27 @@ def main():
     
     verify_ssl = not args.no_verify_ssl
     target_role = args.role
+    
+    # Validate arguments
+    if args.orphaned and args.group_name:
+        print(colorize("Error: Cannot specify both group_name and --orphaned flag.", 'red'))
+        sys.exit(1)
+    
+    if not args.orphaned and not args.group_name:
+        print(colorize("Error: Must specify either group_name or --orphaned flag.", 'red'))
+        sys.exit(1)
+    
+    verify_ssl = not args.no_verify_ssl
+    target_role = args.role
+    
+    # Validate arguments
+    if args.orphaned and args.group_name:
+        print(colorize("Error: Cannot specify both group_name and --orphaned flag.", 'red'))
+        sys.exit(1)
+    
+    if not args.orphaned and not args.group_name:
+        print(colorize("Error: Must specify either group_name or --orphaned flag.", 'red'))
+        sys.exit(1)
     
     # Determine the source role based on target
     if target_role == 'editor':
@@ -56,27 +128,40 @@ def main():
     print("Loading registries (users & user groups)...")
     load_registries(verify_ssl=verify_ssl)
     
-    # Find the group by name
-    print(f"\nSearching for group: {args.group_name}")
-    group = get_group_by_name(args.group_name)
+    # Get member IDs based on mode
+    if args.orphaned:
+        print(colorize("\nSearching for orphaned users (no workspace/folder access)...", 'cyan'))
+        orphaned_data = get_orphaned_users(verify_ssl=verify_ssl)
+        
+        if not orphaned_data:
+            print(colorize("No orphaned users found.", 'green'))
+            sys.exit(0)
+        
+        member_ids = list(orphaned_data.keys())
+        group_context = "orphaned users (not in SP_OKR_/SP_ProdMgt_ groups with zero access)"
+        print(colorize(f"\nFound {len(member_ids)} orphaned user(s)", 'yellow'))
+    else:
+        # Find the group by name
+        print(f"\nSearching for group: {args.group_name}")
+        group = get_group_by_name(args.group_name)
+        
+        if not group:
+            print(colorize(f"Error: Group '{args.group_name}' not found.", 'red'))
+            sys.exit(1)
+        
+        group_id = group['id']
+        print(colorize(f"Found group: {args.group_name}", 'green'))
+        member_ids = get_group_members(group_id)
+        group_context = f"group '{args.group_name}'"
+        
+        if not member_ids:
+            print(colorize(f"No members found in {group_context}.", 'yellow'))
+            sys.exit(0)
     
-    if not group:
-        print(colorize(f"Error: Group '{args.group_name}' not found.", 'red'))
-        sys.exit(1)
-    
-    group_id = group['id']
-    print(colorize(f"Found group: {args.group_name}", 'green'))
     print(f"Target role: {colorize(target_role, 'cyan')}")
     print(f"Action: {action_desc}")
     
-    # Get all members of the group
-    member_ids = get_group_members(group_id)
-    
-    if not member_ids:
-        print(colorize(f"No members found in group '{args.group_name}'.", 'yellow'))
-        sys.exit(0)
-    
-    print(f"\nFound {len(member_ids)} member(s) in group '{args.group_name}':")
+    print(f"\nFound {len(member_ids)} member(s) in {group_context}:")
     print("="*60)
     
     # First pass: Collect changes and skipped users

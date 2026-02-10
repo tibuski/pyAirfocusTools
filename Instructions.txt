@@ -112,18 +112,30 @@ If their role is contributor, list their full name grouped by group.
 
 ### Third TASK: Set Role
 **Step 1 : Create Tool `set_role.py`**
-- **Objective:** Set a role (editor or contributor) for members of a given group who have a different role. Do not touch users with administrator role !
+- **Objective:** Set a role (editor or contributor) for members of a given group OR for orphaned users who have a different role. Do not touch users with administrator role !
    As usual, the functions to get users and group membership and to set the role should be part of utils.py as we could re-use this code later.
 - **Required Argument:** `--role` with value 'editor' or 'contributor' to specify the target role
+- **Optional Flag:** `--orphaned` to target orphaned users instead of a specific group
 - **Interactive Confirmation:** Display all planned changes and prompt user to confirm (y/n) before proceeding with the actual modifications.
 
 **Logic:**
-The tool is run with a group name and target role as arguments. For every user in this group who does NOT have the target role:
-- If target role is 'editor': Set role to 'editor' for users with 'contributor' role. Skip users who are already 'editor'.
-- If target role is 'contributor': Set role to 'contributor' for users with 'editor' role. Skip users who are already 'contributor'.
-- NEVER modify users with 'admin' role.
-- Skip users with any other role.
-- Display all changes that will be made, then ask for confirmation before executing.
+The tool can operate in two modes:
+
+**Mode 1: Group Mode (default)**
+- Run with a group name and target role as arguments. For every user in this group who does NOT have the target role:
+  - If target role is 'editor': Set role to 'editor' for users with 'contributor' role. Skip users who are already 'editor'.
+  - If target role is 'contributor': Set role to 'contributor' for users with 'editor' role. Skip users who are already 'contributor'.
+  - NEVER modify users with 'admin' role.
+  - Skip users with any other role.
+  - Display all changes that will be made, then ask for confirmation before executing.
+
+**Mode 2: Orphaned Users Mode (with `--orphaned` flag)**
+- Identifies editors not in SP_OKR_ or SP_ProdMgt_ groups (excluding *_C_U) who have ZERO workspace access AND ZERO folder access
+- Fetches all workspaces and folders once to analyze access (performance optimized)
+- Only targets truly orphaned users (no direct workspace or folder permissions)
+- Displays each user with confirmation prompt before applying role changes
+- Useful for downgrading licenses of unused accounts
+- Cannot be combined with group_name argument
 
 **Step 2: Documentation**
 - Update the `README.md`.
