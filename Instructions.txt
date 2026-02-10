@@ -129,7 +129,7 @@ If their role is contributor, list their full name grouped by group.
 - **Interactive Confirmation:** Display all planned changes and prompt user to confirm (y/n) before proceeding with the actual modifications.
 
 **Logic:**
-The tool can operate in two modes:
+The tool can operate in three modes:
 
 **Mode 1: Group Mode (default)**
 - Run with a group name and target role as arguments. For every user in this group who does NOT have the target role:
@@ -146,6 +146,16 @@ The tool can operate in two modes:
 - Displays each user with confirmation prompt before applying role changes
 - Useful for downgrading licenses of unused accounts
 - Cannot be combined with group_name argument
+
+**Mode 3: Group Contributors Mode (with `--group-contributors` flag)**
+- Targets all users who have the 'contributor' role across all SP_OKR_/SP_ProdMgt_ groups (excluding *_C_U)
+- Useful for bulk upgrading contributors to editors across all groups
+- Fetches all contributors using the same logic as get_group_contributors.py
+- Only modifies users with 'contributor' role (when target is 'editor') or 'editor' role (when target is 'contributor')
+- NEVER modifies users with 'admin' role
+- Displays all planned changes with group membership information, then asks for confirmation before executing
+- Cannot be combined with group_name or --orphaned arguments
+- Designed to work with the output concept of get_group_contributors.py (all contributors across managed groups)
 
 **Step 2: Documentation**
 - Update the `README.md`.

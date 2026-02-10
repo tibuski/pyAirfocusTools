@@ -543,6 +543,50 @@ def get_groups_matching_pattern(prefix: str, exclude_suffix: Optional[str] = Non
     return matching_groups
 
 
+def get_all_group_contributors() -> Dict[str, Dict[str, Any]]:
+    """
+    Get all users with 'contributor' role across SP_OKR_ and SP_ProdMgt_ groups (excluding *_C_U).
+    Returns mapping of user_id -> {'name': str, 'groups': [group_names]}.
+    
+    This shared function implements the same logic as get_group_contributors.py
+    for use in other tools like set_role.py.
+    
+    Returns:
+        Dictionary mapping user_id to user info with their groups
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    # Get all SP_OKR_ groups
+    okr_groups = get_groups_by_prefix('SP_OKR_')
+    
+    # Get all SP_ProdMgt_ groups excluding *_C_U
+    prodmgt_groups = get_groups_matching_pattern('SP_ProdMgt_', exclude_suffix='_C_U')
+    
+    # Combine both lists
+    all_groups = okr_groups + prodmgt_groups
+    
+    # Dictionary to track contributors: user_id -> {'name': str, 'groups': [group_names]}
+    contributors_data = {}
+    
+    for group in all_groups:
+        group_name = group.get('name', 'Unknown Group')
+        user_ids = group.get('userIds', [])
+        
+        # Find contributors in this group
+        for user_id in user_ids:
+            role = get_user_role(user_id)
+            if role == 'contributor':
+                if user_id not in contributors_data:
+                    contributors_data[user_id] = {
+                        'name': get_username_from_id(user_id),
+                        'groups': []
+                    }
+                contributors_data[user_id]['groups'].append(group_name)
+    
+    return contributors_data
+
+
 def get_users_not_in_groups(role: Optional[str] = None) -> set:
     """
     Get all users who are not members of any user group.

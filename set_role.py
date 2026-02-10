@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-Set role (editor or contributor) for members in a given user group or for orphaned users.
+Set role (editor or contributor) for users in three modes:
+  1. Group Mode: Set role for members of a specific group
+  2. Orphaned Users Mode (--orphaned): Target users not in managed groups with zero workspace/folder access
+  3. Group Contributors Mode (--group-contributors): Target all contributors across SP_OKR_/SP_ProdMgt_ groups
 
-This tool updates the role of users in a specified group to a target role.
-Can also target orphaned users (not in SP_OKR_/SP_ProdMgt_ groups with no workspace/folder access).
+This tool updates the role of users to a target role.
 Does not modify users with admin role.
 """
 
@@ -19,7 +21,8 @@ from utils import (
     set_user_role,
     colorize,
     get_users_not_in_specific_groups,
-    build_user_access_mappings
+    build_user_access_mappings,
+    get_all_group_contributors
 )
 
 
@@ -68,12 +71,12 @@ def get_orphaned_users(verify_ssl: bool = True) -> dict:
 def main():
     """Main entry point for the tool."""
     parser = argparse.ArgumentParser(
-        description='Set role (editor or contributor) for members in a user group or for orphaned users. Does not modify admin users.'
+        description='Set role (editor or contributor) for members in a user group, for orphaned users, or for all group contributors. Does not modify admin users.'
     )
     parser.add_argument(
         'group_name',
         nargs='?',
-        help='Name of the user group (e.g., SP_OKR_ERA_F). Not required when using --orphaned.'
+        help='Name of the user group (e.g., SP_OKR_ERA_F). Not required when using --orphaned or --group-contributors.'
     )
     parser.add_argument(
         '--role',
@@ -85,6 +88,11 @@ def main():
         '--orphaned',
         action='store_true',
         help='Target orphaned users (not in SP_OKR_/SP_ProdMgt_ groups with zero workspace/folder access)'
+    )
+    parser.add_argument(
+        '--group-contributors',
+        action='store_true',
+        help='Target all contributors across SP_OKR_/SP_ProdMgt_ groups (excluding *_C_U)'
     )
     parser.add_argument(
         '--no-verify-ssl',
@@ -102,25 +110,20 @@ def main():
     verify_ssl = not args.no_verify_ssl
     target_role = args.role
     
-    # Validate arguments
-    if args.orphaned and args.group_name:
-        print(colorize("Error: Cannot specify both group_name and --orphaned flag.", 'red'))
+    # Validate arguments - ensure only one mode is selected
+    modes_selected = sum([
+        bool(args.group_name),
+        args.orphaned,
+        args.group_contributors
+    ])
+    
+    if modes_selected == 0:
+        print(colorize("Error: Must specify either group_name, --orphaned, or --group-contributors.", 'red'))
+        parser.print_help()
         sys.exit(1)
     
-    if not args.orphaned and not args.group_name:
-        print(colorize("Error: Must specify either group_name or --orphaned flag.", 'red'))
-        sys.exit(1)
-    
-    verify_ssl = not args.no_verify_ssl
-    target_role = args.role
-    
-    # Validate arguments
-    if args.orphaned and args.group_name:
-        print(colorize("Error: Cannot specify both group_name and --orphaned flag.", 'red'))
-        sys.exit(1)
-    
-    if not args.orphaned and not args.group_name:
-        print(colorize("Error: Must specify either group_name or --orphaned flag.", 'red'))
+    if modes_selected > 1:
+        print(colorize("Error: Cannot combine group_name, --orphaned, and --group-contributors. Choose only one mode.", 'red'))
         sys.exit(1)
     
     # Determine the source role based on target
@@ -145,7 +148,20 @@ def main():
         
         member_ids = list(orphaned_data.keys())
         group_context = "orphaned users (not in SP_OKR_/SP_ProdMgt_ groups with zero access)"
+        contributors_groups = None  # Not used in orphaned mode
         print(colorize(f"\nFound {len(member_ids)} orphaned user(s)", 'yellow'))
+    elif args.group_contributors:
+        print(colorize("\nSearching for contributors across all SP_OKR_/SP_ProdMgt_ groups (excluding *_C_U)...", 'cyan'))
+        contributors_data = get_all_group_contributors()
+        
+        if not contributors_data:
+            print(colorize("No contributors found in managed groups.", 'green'))
+            sys.exit(0)
+        
+        member_ids = list(contributors_data.keys())
+        group_context = "contributors across all SP_OKR_/SP_ProdMgt_ groups (excluding *_C_U)"
+        contributors_groups = contributors_data  # Store for later display
+        print(colorize(f"\nFound {len(member_ids)} contributor(s) across managed groups", 'yellow'))
     else:
         # Find the group by name
         print(f"\nSearching for group: {args.group_name}")
@@ -159,6 +175,7 @@ def main():
         print(colorize(f"Found group: {args.group_name}", 'green'))
         member_ids = get_group_members(group_id)
         group_context = f"group '{args.group_name}'"
+        contributors_groups = None  # Not used in single group mode
         
         if not member_ids:
             print(colorize(f"No members found in {group_context}.", 'yellow'))
@@ -201,8 +218,16 @@ def main():
     print("-"*60)
     
     if changes_to_make:
-        for _, user_name, current_role in changes_to_make:
-            print(f"  {user_name}: {colorize(current_role, 'yellow')} -> {colorize(target_role, 'green')}")
+        for user_id, user_name, current_role in changes_to_make:
+            change_line = f"  {user_name}: {colorize(current_role, 'yellow')} -> {colorize(target_role, 'green')}"
+            
+            # For --group-contributors mode, show which groups the user belongs to
+            if args.group_contributors and contributors_groups and user_id in contributors_groups:
+                user_groups = contributors_groups[user_id]['groups']
+                groups_str = ', '.join(sorted(user_groups))
+                change_line += f" (in: {colorize(groups_str, 'cyan')})"
+            
+            print(change_line)
     else:
         print("  No changes needed.")
     
