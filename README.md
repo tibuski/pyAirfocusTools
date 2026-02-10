@@ -183,11 +183,11 @@ uv run python set_role.py <group_name> --role <editor|contributor> [--no-verify-
 Analyze license usage across Airfocus platform with breakdown by OKR and Product Management groups.
 
 ```bash
-uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
+uv run python get_license_usage.py [--orphaned-editors] [--debug] [--no-verify-ssl]
 ```
 
 **Options:**
-- `--orphaned-editors`: List all editors who are not part of SP_OKR_ or SP_ProdMgt_ groups (below the analysis summary)
+- `--orphaned-editors`: List all editors who are not part of SP_OKR_ or SP_ProdMgt_ groups, including their group memberships and workspace access
 - `--debug`: Show debug information about user and group counts
 - `--no-verify-ssl`: Disable SSL certificate verification
 
@@ -206,7 +206,26 @@ uv run python get_license_usage.py [--orphaned-editors] [--no-verify-ssl]
 - Shared license count (users in multiple categories)
 - Effective license usage calculation
 - Discrepancy note if API-reported usage differs from calculated effective users
-- Optional: List of orphaned editors (when `--orphaned-editors` flag is used)
+
+**Orphaned Editors Details** (with `--orphaned-editors` flag):
+- Lists each editor not in SP_OKR_ or SP_ProdMgt_ groups
+- For each editor, displays:
+  - **Access hierarchy**: Hierarchical view of workspace groups (folders) and workspaces the user has direct access to
+    - Folders shown with 📁 icon and permission level (Full, Write, Comment, Read)
+    - Workspaces nested under their folders with proper indentation
+    - Orphaned workspaces (not in folders) shown at root level
+    - Shows permission level for each folder and workspace
+    - Properly handles nested folder structures recursively
+    - Only shows folders/workspaces where user has direct (non-group) permissions
+- Uses '..' indentation following hierarchy conventions (more dots = deeper nesting)
+- Color-coded: Yellow for section headers, Cyan for "Access hierarchy:", Magenta for "no access" states
+- Helps identify why editors are consuming licenses outside OKR/ProdMgt groups
+
+**Performance:**
+- Optimized for large datasets (tested with 75+ orphaned editors)
+- Fetches all workspaces and folders once upfront
+- Builds access mappings in memory (no per-user API calls)
+- Typical execution time: ~5-10 seconds for full hierarchy analysis
 
 ### set_field_options.py
 
@@ -273,6 +292,9 @@ uv run python set_field_options.py --field <FIELD_NAME> --no-verify-ssl
 ## Architecture
 
 **`utils.py`** - Core library:
+- **Registry Pattern**: Pre-fetch all users and user groups at startup for efficient lookups
+- **Performance Optimization**: Batch API calls and in-memory filtering to minimize API requests
+- Key functions:
 - `load_config()`: Parse config file
 - `load_registries()`: Pre-fetch users and user groups (Registry Pattern)
 - `api_get()` / `make_api_request()`: Centralized API calls with SSL option
@@ -289,7 +311,7 @@ uv run python set_field_options.py --field <FIELD_NAME> --no-verify-ssl
 - `get_users_not_in_groups()`: Get users not in any group, optionally filtered by role
 - `get_users_not_in_specific_groups()`: Get users not in groups matching specific prefixes, optionally filtered by role
 - `build_workspace_hierarchy()`: Build workspace tree structure using parent-child relationships (for OKR workspaces)
-- `build_folder_hierarchy()`: Build workspace tree structure using folder-based organization (for Product Management workspaces)
+- `build_folder_hierarchy()`: Build folder-based workspace tree with batch folder fetching (for Product Management workspaces)
 - `get_field_by_name()`: Retrieve full field configuration by name
 - `get_field_options()`: Fetch field options (as names or full objects with IDs)
 - `add_field_options()`: Add new options to a field (preserves existing option IDs)

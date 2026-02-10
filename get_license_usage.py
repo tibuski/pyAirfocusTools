@@ -22,7 +22,8 @@ from utils import (
     get_users_not_in_groups,
     get_users_not_in_specific_groups,
     get_username_from_id,
-    colorize
+    colorize,
+    make_api_request
 )
 
 
@@ -148,24 +149,212 @@ def display_license_summary(analysis: Dict[str, any]):
     print()
 
 
-def display_orphaned_editors(editors_not_in_groups: set):
+def display_orphaned_editors(editors_not_in_groups: set, verify_ssl: bool = True):
     """
-    Display a list of editors who are not in SP_OKR_ or SP_ProdMgt_ groups.
+    Display a list of editors who are not in SP_OKR_ or SP_ProdMgt_ groups,
+    including hierarchical view of workspace groups (folders) and workspaces they have access to.
     
     Args:
         editors_not_in_groups: Set of user IDs for editors not in OKR/ProdMgt groups
+        verify_ssl: Whether to verify SSL certificates (default: True)
     """
     if not editors_not_in_groups:
         print(colorize("\nNo orphaned editors found.", 'green'))
         return
     
+    from utils import build_folder_hierarchy
+    
     print(colorize(f"\n=== Orphaned Editors (Not in SP_OKR_/SP_ProdMgt_): {len(editors_not_in_groups)} ===\n", 'yellow'))
     
-    # Sort by username for consistent output
-    editor_names = sorted([get_username_from_id(user_id) for user_id in editors_not_in_groups])
+    # Fetch ALL workspaces once to build the hierarchy (performance optimization)
+    print("  Fetching all workspaces for hierarchy...")
+    all_workspaces = []
+    offset = 0
+    limit = 1000
+    while True:
+        response = make_api_request(
+            '/api/workspaces/search',
+            method='POST',
+            data={
+                'archived': False,
+                'sort': {'type': 'name', 'direction': 'asc'}
+            },
+            params={'offset': offset, 'limit': limit},
+            verify_ssl=verify_ssl
+        )
+        items = response.get('items', [])
+        all_workspaces.extend(items)
+        total_items = response.get('totalItems', 0)
+        if offset + limit >= total_items:
+            break
+        offset += limit
     
-    for name in editor_names:
+    # Build folder hierarchy once for all users
+    print("  Building folder hierarchy...")
+    full_hierarchy = build_folder_hierarchy(all_workspaces, verify_ssl=verify_ssl)
+    
+    # Pre-filter workspaces and folders by user access (in-memory, no API calls)
+    # This is much faster than calling get_user_workspaces() per user
+    print("  Analyzing user access...")
+    
+    # Build user -> workspace mapping from all_workspaces
+    user_to_workspaces = {}
+    for workspace in all_workspaces:
+        embedded = workspace.get('_embedded', {})
+        user_permissions = embedded.get('permissions', {})
+        for user_id in user_permissions.keys():
+            if user_id not in user_to_workspaces:
+                user_to_workspaces[user_id] = []
+            user_to_workspaces[user_id].append(workspace)
+    
+    # Build user -> folder mapping from full_hierarchy folder_map
+    user_to_folders = {}
+    folder_map = full_hierarchy.get('folder_map', {})
+    for folder_id, folder_data in folder_map.items():
+        embedded = folder_data.get('_embedded', {})
+        user_permissions = embedded.get('permissions', {})
+        for user_id in user_permissions.keys():
+            if user_id not in user_to_folders:
+                user_to_folders[user_id] = []
+            user_to_folders[user_id].append(folder_data)
+    
+    # Sort by username for consistent output
+    editor_list = sorted([
+        (get_username_from_id(user_id), user_id) 
+        for user_id in editors_not_in_groups
+    ])
+    
+    for name, user_id in editor_list:
         print(f"  - {name}")
+        
+        # Get user's workspaces and folders from pre-built mappings (no API calls!)
+        user_workspaces = user_to_workspaces.get(user_id, [])
+        user_workspace_groups = user_to_folders.get(user_id, [])
+        
+        if not user_workspace_groups and not user_workspaces:
+            print(f"    {colorize('No workspace or folder access', 'magenta')}")
+            continue
+        
+        print(f"    {colorize('Access hierarchy:', 'cyan')}")
+        
+        # Filter hierarchy to only show folders/workspaces user has access to
+        user_folder_ids = {f['id'] for f in user_workspace_groups}
+        user_workspace_ids = {ws['id'] for ws in user_workspaces}
+        
+        def print_user_hierarchy(node: dict, depth: int = 2):
+            """Print hierarchy showing only items the user has access to."""
+            if node.get('is_folder'):
+                folder_data = node.get('folder_data', {})
+                folder_id = folder_data.get('id')
+                folder_name = folder_data.get('name', 'Unnamed')
+                
+                # Check if user has access to this folder
+                if folder_id in user_folder_ids:
+                    # Get folder permission
+                    embedded = folder_data.get('_embedded', {})
+                    user_permissions = embedded.get('permissions', {})
+                    permission = user_permissions.get(user_id, '')
+                    perm_display = permission.capitalize() if permission else 'Unknown'
+                    
+                    # Display folder
+                    indent = ".." * depth
+                    print(f"      {indent}📁 {folder_name} ({perm_display})")
+                    
+                    # Show workspaces in this folder that user has access to
+                    for ws_node in node.get('workspaces', []):
+                        workspace = ws_node['workspace']
+                        ws_id = workspace['id']
+                        if ws_id in user_workspace_ids:
+                            ws_name = workspace.get('name', 'Unnamed')
+                            ws_embedded = workspace.get('_embedded', {})
+                            ws_user_permissions = ws_embedded.get('permissions', {})
+                            ws_permission = ws_user_permissions.get(user_id, '')
+                            ws_perm_display = ws_permission.capitalize() if ws_permission else 'Unknown'
+                            
+                            ws_indent = ".." * (depth + 1)
+                            print(f"      {ws_indent}{ws_name} ({ws_perm_display})")
+                    
+                    # Recursively show subfolders
+                    for child_folder in node.get('children', []):
+                        print_user_hierarchy(child_folder, depth + 1)
+                else:
+                    # User doesn't have folder access, but might have access to workspaces inside
+                    # or subfolders, so we check children
+                    has_accessible_content = False
+                    
+                    # Check if any workspace in this folder is accessible
+                    for ws_node in node.get('workspaces', []):
+                        if ws_node['workspace']['id'] in user_workspace_ids:
+                            has_accessible_content = True
+                            break
+                    
+                    # Check if any subfolder is accessible
+                    if not has_accessible_content:
+                        for child_folder in node.get('children', []):
+                            if has_accessible_items_in_tree(child_folder):
+                                has_accessible_content = True
+                                break
+                    
+                    if has_accessible_content:
+                        # Show folder name without permission to maintain hierarchy
+                        indent = ".." * depth
+                        print(f"      {indent}📁 {folder_name}")
+                        
+                        # Show workspaces
+                        for ws_node in node.get('workspaces', []):
+                            workspace = ws_node['workspace']
+                            ws_id = workspace['id']
+                            if ws_id in user_workspace_ids:
+                                ws_name = workspace.get('name', 'Unnamed')
+                                ws_embedded = workspace.get('_embedded', {})
+                                ws_user_permissions = ws_embedded.get('permissions', {})
+                                ws_permission = ws_user_permissions.get(user_id, '')
+                                ws_perm_display = ws_permission.capitalize() if ws_permission else 'Unknown'
+                                
+                                ws_indent = ".." * (depth + 1)
+                                print(f"      {ws_indent}{ws_name} ({ws_perm_display})")
+                        
+                        # Show subfolders
+                        for child_folder in node.get('children', []):
+                            print_user_hierarchy(child_folder, depth + 1)
+            else:
+                # Orphaned workspace at root
+                workspace = node['workspace']
+                ws_id = workspace['id']
+                if ws_id in user_workspace_ids:
+                    ws_name = workspace.get('name', 'Unnamed')
+                    ws_embedded = workspace.get('_embedded', {})
+                    ws_user_permissions = ws_embedded.get('permissions', {})
+                    ws_permission = ws_user_permissions.get(user_id, '')
+                    ws_perm_display = ws_permission.capitalize() if ws_permission else 'Unknown'
+                    
+                    indent = ".." * depth
+                    print(f"      {indent}{ws_name} ({ws_perm_display})")
+        
+        def has_accessible_items_in_tree(node: dict) -> bool:
+            """Check if node or descendants have accessible items."""
+            if node.get('is_folder'):
+                folder_id = node.get('folder_data', {}).get('id')
+                if folder_id in user_folder_ids:
+                    return True
+                
+                for ws_node in node.get('workspaces', []):
+                    if ws_node['workspace']['id'] in user_workspace_ids:
+                        return True
+                
+                for child in node.get('children', []):
+                    if has_accessible_items_in_tree(child):
+                        return True
+            else:
+                if node['workspace']['id'] in user_workspace_ids:
+                    return True
+            
+            return False
+        
+        # Print the hierarchy
+        for root in full_hierarchy['roots']:
+            if has_accessible_items_in_tree(root):
+                print_user_hierarchy(root)
     
     print()
 
@@ -198,10 +387,10 @@ def main():
         analysis = analyze_license_usage(verify_ssl=verify_ssl, debug=args.debug)
         display_license_summary(analysis)
         
-        # If --orphaned-editors flag is set, display the list
+        # If --orphaned-editors flag is set, display the list with workspace access
         if args.orphaned_editors:
             editors_not_in_groups = analysis.get('editors_not_in_groups', set())
-            display_orphaned_editors(editors_not_in_groups)
+            display_orphaned_editors(editors_not_in_groups, verify_ssl=verify_ssl)
             
     except Exception as e:
         print(colorize(f"Error: {e}", 'red'))

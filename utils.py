@@ -677,7 +677,7 @@ def build_folder_hierarchy(workspaces: list, verify_ssl: bool = True) -> Dict[st
     folder_children = {}  # folder_id -> [child_folder_ids]
     folder_parent = {}    # folder_id -> parent_folder_id
     
-    for folder in folders:
+    for folder in folders_basic:
         parent_id = folder.get('parentId')
         folder_id = folder['id']
         if parent_id:
@@ -949,3 +949,126 @@ def supports_field_options(field_type_id: str) -> bool:
     # Field types that support options based on the OpenAPI spec
     option_types = {'select', 'dropdown', 'single-select', 'multi-select'}
     return field_type_id.lower() in option_types
+
+
+def get_user_workspaces(user_id: str, verify_ssl: bool = True) -> list:
+    """
+    Get all workspaces that a user has direct access to (not through groups).
+    
+    Args:
+        user_id: UUID of the user
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        List of workspace dictionaries where the user has direct permissions
+    """
+    # Fetch all workspaces with pagination
+    all_workspaces = []
+    offset = 0
+    limit = 1000
+    
+    while True:
+        response = make_api_request(
+            '/api/workspaces/search',
+            method='POST',
+            data={
+                'archived': False,
+                'sort': {'type': 'name', 'direction': 'asc'}
+            },
+            params={'offset': offset, 'limit': limit},
+            verify_ssl=verify_ssl
+        )
+        
+        items = response.get('items', [])
+        all_workspaces.extend(items)
+        
+        total_items = response.get('totalItems', 0)
+        if offset + limit >= total_items:
+            break
+        
+        offset += limit
+    
+    # Filter workspaces where the user has direct permissions
+    user_workspaces = []
+    for workspace in all_workspaces:
+        embedded = workspace.get('_embedded', {})
+        user_permissions = embedded.get('permissions', {})
+        
+        # Check if user has direct permission on this workspace
+        if user_id in user_permissions:
+            user_workspaces.append(workspace)
+    
+    return user_workspaces
+
+
+def get_user_groups(user_id: str) -> list:
+    """
+    Get all user groups that a specific user belongs to.
+    
+    Args:
+        user_id: UUID of the user
+    
+    Returns:
+        List of group dictionaries where the user is a member
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    user_groups = []
+    for group in _group_registry.values():
+        user_ids = group.get('userIds', [])
+        if user_id in user_ids:
+            user_groups.append(group)
+    
+    return user_groups
+
+
+def get_user_workspace_groups(user_id: str, verify_ssl: bool = True) -> list:
+    """
+    Get all workspace groups (folders) that a user has direct access to.
+    
+    Args:
+        user_id: UUID of the user
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        List of workspace group (folder) dictionaries where the user has direct permissions
+    """
+    # Fetch all workspace groups (folders) with basic info
+    try:
+        response = make_api_request(
+            '/api/workspaces/groups/search',
+            method='POST',
+            data={},
+            verify_ssl=verify_ssl
+        )
+        folders_basic = response.get('items', [])
+    except Exception as e:
+        return []
+    
+    # Fetch all folders with embedded data (permissions) in one batch request
+    folder_ids = [f['id'] for f in folders_basic]
+    user_folders = []
+    
+    if folder_ids:
+        try:
+            # Use list endpoint to get all folders with embedded data in one call
+            list_response = make_api_request(
+                '/api/workspaces/groups/list',
+                method='POST',
+                data=folder_ids,
+                verify_ssl=verify_ssl
+            )
+            # Response is an array of folders with embedded data
+            for folder in list_response:
+                if folder:  # Can be null for inaccessible folders
+                    embedded = folder.get('_embedded', {})
+                    user_permissions = embedded.get('permissions', {})
+                    
+                    # Check if user has direct permission on this folder
+                    if user_id in user_permissions:
+                        user_folders.append(folder)
+        except Exception as e:
+            pass
+    
+    return user_folders
