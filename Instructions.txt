@@ -191,7 +191,15 @@ Display a clear summary showing:
 - Product Management Licensed Users: [count]
 - Editors not in a group : [count]
 - Shared License Users (counted in both): [count]
+- OKR only users: [OKR count - Shared count]
 - Effective License Users: [OKR + ProdMgt + Editor + Administrators - Shared]
+- Calculation breakdown displayed as: (X Admin + Y OKR + Z ProdMgt) where X, Y, Z are the actual counts
+
+**Formatting Requirements:**
+- Numbers in the "License Distribution" and "Effective License Usage" sections must be right-aligned in a 6-character width field for proper alignment
+- Use Python f-string formatting with `:>6` to right-align numbers
+- This ensures all numbers align on their units position regardless of magnitude
+- Total Unique Users line shows the total with the breakdown on the next line indented with parentheses
 
 **Step 2: Documentation**
 - Update the `README.md`.

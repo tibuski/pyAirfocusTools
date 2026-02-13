@@ -211,13 +211,15 @@ uv run python get_license_usage.py [--orphaned-editors] [--debug] [--no-verify-s
 4. **Product Management Licensed Users**: Counts unique members across groups starting with `SP_ProdMgt_` (excluding groups ending with `_C_U`)
 5. **Editors not in OKR/ProdMgt groups**: Counts users with 'editor' role who are not members of SP_OKR_ or SP_ProdMgt_ groups (excluding *_C_U)
 6. **Shared License Users**: Identifies users appearing in both OKR and Product Management groups (counted in both but using single license)
-7. **Effective License Users**: Calculates actual unique users: Admins + OKR + ProdMgt + Editors - Shared
+7. **OKR only users**: Users in OKR groups but not in Product Management groups (OKR - Shared)
+8. **Effective License Users**: Calculates actual unique users: Admins + OKR + ProdMgt + Editors - Shared
 
 **Output:**
 - Total license allocation (total, used, free)
-- License distribution by category (Administrators, OKR, ProdMgt, Editors not in OKR/ProdMgt)
-- Shared license count (users in multiple categories)
-- Effective license usage calculation
+- License distribution by category (Administrators, OKR, ProdMgt, Duplicates, Editors not in OKR/ProdMgt)
+- Effective license usage showing OKR Licenses, ProdMgt Licenses, and Total Unique Users
+- Total Unique Users displayed with breakdown: (X Admin + Y OKR + Z ProdMgt)
+- All numbers are right-aligned for easy comparison
 - Discrepancy note if API-reported usage differs from calculated effective users
 
 **Orphaned Editors Details** (with `--orphaned-editors` flag):

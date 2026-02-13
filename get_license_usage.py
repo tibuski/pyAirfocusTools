@@ -91,6 +91,9 @@ def analyze_license_usage(verify_ssl: bool = True, debug: bool = False) -> Dict[
     # Find users who are in both OKR and ProdMgt (shared licenses)
     shared_users = okr_users.intersection(prodmgt_users)
     
+    # Calculate OKR only users (OKR users minus those in both)
+    okr_only_users = okr_users - prodmgt_users
+    
     # Calculate effective license users (unique across all categories)
     # Editors not in groups are already separate, so we add them
     # Add admins to the calculation
@@ -106,6 +109,7 @@ def analyze_license_usage(verify_ssl: bool = True, debug: bool = False) -> Dict[
         'editors_not_in_groups_count': len(editors_not_in_groups),
         'editors_not_in_groups': editors_not_in_groups,  # Return the actual set
         'shared_count': len(shared_users),
+        'okr_only_count': len(okr_only_users),
         'effective_count': len(effective_users) + admin_count  # Add admins to effective count
     }
 
@@ -128,22 +132,25 @@ def display_license_summary(analysis: Dict[str, any]):
     print(f"  Free:      {seats.get('free', 0)}")
     
     print(colorize("\nLicense Distribution:", 'yellow'))
-    print(f"  Administrators:                   {analysis['admin_count']}")
-    print(f"  SP_OKR Groups Editors:              {analysis['okr_count']}")
-    print(f"  SP_ProdMgt Groups Editors:          {analysis['prodmgt_count']}")
-    print(f"  Duplicates (counted in both):     {analysis['shared_count']}")
-    print(f"  Editors not in SP_OKR/SP_ProdMgt: {analysis['editors_not_in_groups_count']}")
+    print(f"  Administrators:                                        {analysis['admin_count']:>6}")
+    print(f"  SP_OKR Groups Editors:                                 {analysis['okr_count']:>6}")
+    print(f"  SP_ProdMgt Groups Editors:                             {analysis['prodmgt_count']:>6}")
+    print(f"  Duplicates (counted in both):                          {analysis['shared_count']:>6}")
+    print(f"  Editors not in SP_OKR/SP_ProdMgt:                      {analysis['editors_not_in_groups_count']:>6}")
     
     print(colorize("\nEffective License Usage:", 'green'))
-    print(f"  Unique Users (Admin + OKR + ProdMgt + Editors): {analysis['effective_count']}")
-    print(f"  Calculation: {analysis['admin_count']} + {analysis['okr_count']} + {analysis['prodmgt_count']} + {analysis['editors_not_in_groups_count']} - {analysis['shared_count']} = {analysis['effective_count']}")
+    print(f"  OKR Licenses:                                          {analysis['okr_only_count']:>6}")
+    prodmgt_licenses = analysis['prodmgt_count'] + analysis['editors_not_in_groups_count']
+    print(f"  PrdMgt Licenses:                                       {prodmgt_licenses:>6}")
+    print(f"  Total Unique Users:                                    {analysis['effective_count']:>6}")
+    print(f"    ({analysis['admin_count']} Admin + {analysis['okr_only_count']} OKR + {prodmgt_licenses} ProdMgt)")
     
     # Show discrepancy if any
     api_used = seats.get('used', 0)
     if api_used != analysis['effective_count']:
         diff = api_used - analysis['effective_count']
         print(colorize(f"\nNote: API reports {api_used} used licenses, difference of {diff}", 'magenta'))
-        print(colorize("      (This may include users not in SP_OKR_/SP_ProdMgt_ groups)", 'magenta'))
+        print(colorize("      (This may include disabled users that are still editors)", 'magenta'))
     
     print()
 
