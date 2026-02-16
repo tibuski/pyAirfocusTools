@@ -27,6 +27,23 @@ Secure, modular CLI toolset for interacting with the Airfocus API.
    baseurl = https://app.airfocus.com
    ```
 
+## Testing
+
+Run the test suite using Python's built-in unittest framework (no external dependencies required):
+
+```bash
+# Verbose output (shows each test name - recommended)
+uv run python -m unittest test_utils -v
+
+# Simple output (just shows dots and summary)
+uv run python -m unittest test_utils
+
+# Clean output (suppress error messages from error-handling tests)
+uv run python -m unittest test_utils -v 2>$null
+```
+
+**Note:** You may see error messages in the output - these are expected and are part of testing error-handling scenarios. A successful test run shows "OK" at the end with "Ran 44 tests".
+
 ## Usage
 
 All tools are executed using `uv run`:
