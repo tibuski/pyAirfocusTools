@@ -35,44 +35,7 @@ def confirm_action(message: str) -> bool:
 def main():
     """Main entry point for the set_workspace_extension tool."""
     parser = argparse.ArgumentParser(
-        description='Install an extension (app) to all workspaces within a specified folder',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  # Install OKR app to all workspaces in a folder (auto-fetch app ID)
-  uv run python set_workspace_extension.py --folder "Q1 Objectives" --extension-type okr
-
-  # Install OKR app with explicit app ID
-  uv run python set_workspace_extension.py --app-id abc123 --folder "Q1 Objectives" --extension-type okr
-
-  # Install OKR app and link objective workspaces (REQUIRED for OKR)
-  # Supports both workspace names and UUIDs
-  uv run python set_workspace_extension.py --folder "Team Workspaces" --extension-type okr --objective-workspaces "CMS,Product Strategy"
-
-  # Or use workspace UUIDs directly
-  uv run python set_workspace_extension.py --folder "Q1 KRs" --extension-type okr --objective-workspaces "c6ab53ae-f78b-480b-aa67-c7189713f9f7,another-id"
-
-  # Without SSL verification
-  uv run python set_workspace_extension.py --folder "Q1 Objectives" --extension-type okr --no-verify-ssl
-
-  # With debug mode to see detailed API requests/responses
-  uv run python set_workspace_extension.py --folder "Q1 Objectives" --extension-type okr --debug
-
-Available Extension Types (from GET /api/workspaces/extensions/apps):
-  - portfolio (Portfolio management)
-  - prioritization (Priority scoring/ranking)
-  - portal (Portal functionality)
-  - insights (Analytics/reporting)
-  - okr (OKR/Objectives) [TESTED - confirmed working]
-    * REQUIRES at least one objective workspace ID via --objective-workspaces
-  - forms (Forms functionality)
-  - mirror (Mirror/sync features)
-  - capacity-planning (Capacity planning)
-  - voting (Voting features)
-  - health-check-ins (Health check-ins)
-
-  Note: Only 'okr' has been fully tested. Other types may have different behaviors.
-        """
+        description='Install an extension (app) to all workspaces within a specified folder'
     )
     
     parser.add_argument(
@@ -94,7 +57,8 @@ Available Extension Types (from GET /api/workspaces/extensions/apps):
     
     parser.add_argument(
         '--objective-workspaces',
-        help='Comma-separated list of objective workspace IDs or names to link (REQUIRED for OKR extension type). Supports both workspace names and UUIDs. Example: "CMS,Product Strategy"'
+        help='[REQUIRED for OKR] Comma-separated workspace names or UUIDs to link as objective workspaces. Example: "CMS,Product Strategy"',
+        metavar='WORKSPACE_NAMES_OR_IDS'
     )
     
     parser.add_argument(
@@ -109,8 +73,11 @@ Available Extension Types (from GET /api/workspaces/extensions/apps):
         help='Enable debug mode to show detailed API requests and responses'
     )
     
-    # Show help if no arguments provided
-    if len(sys.argv) == 1:
+    # Show help if no meaningful arguments provided
+    # Check if only optional flags like --no-verify-ssl or --debug are provided
+    meaningful_args = [arg for arg in sys.argv[1:] if not arg.startswith('--no-verify-ssl') and not arg.startswith('--debug')]
+    
+    if len(sys.argv) == 1 or len(meaningful_args) == 0:
         parser.print_help()
         sys.exit(0)
     
