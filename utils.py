@@ -107,12 +107,13 @@ api_get = make_api_request
 # Registry Pattern: Pre-fetch all users and groups at startup
 _user_registry: Dict[str, Dict[str, Any]] = {}
 _group_registry: Dict[str, Dict[str, Any]] = {}  # User Groups (Global Teams) from config
+_workspace_registry: Dict[str, Dict[str, Any]] = {}  # Workspaces
 _registries_loaded: bool = False
 
 
 def load_registries(verify_ssl: bool = True):
     """
-    Pre-fetch all users and user groups from the API once and cache them.
+    Pre-fetch all users, user groups, and workspaces from the API once and cache them.
     This implements the Registry Pattern to avoid multiple API calls.
     Call this function once at the start of your tool.
     
@@ -122,7 +123,7 @@ def load_registries(verify_ssl: bool = True):
     Args:
         verify_ssl: Whether to verify SSL certificates (default: True)
     """
-    global _user_registry, _group_registry, _registries_loaded
+    global _user_registry, _group_registry, _workspace_registry, _registries_loaded
     
     if _registries_loaded:
         return
@@ -152,6 +153,29 @@ def load_registries(verify_ssl: bool = True):
         }
         for group in user_groups
     }
+    
+    # Fetch all workspaces
+    all_workspaces = []
+    offset = 0
+    limit = 100
+    
+    while True:
+        response = make_api_request(
+            '/api/workspaces/search',
+            method='POST',
+            data={},
+            params={'offset': offset, 'limit': limit},
+            verify_ssl=verify_ssl
+        )
+        items = response.get('items', [])
+        all_workspaces.extend(items)
+        total_items = response.get('totalItems', 0)
+        if offset + limit >= total_items:
+            break
+        offset += limit
+    
+    # Build the workspace registry
+    _workspace_registry = {ws['id']: ws for ws in all_workspaces}
     
     _registries_loaded = True
 
@@ -202,6 +226,66 @@ def get_usergroup_name(group_id: str) -> str:
 
 # Alias for backward compatibility
 get_groupname_from_id = get_usergroup_name
+
+
+def get_workspace_name_from_id(workspace_id: str) -> str:
+    """
+    Resolve a workspace ID to a human-readable name using the registry.
+    
+    Args:
+        workspace_id: UUID of the workspace
+    
+    Returns:
+        Workspace's name (or ID if not found)
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    workspace = _workspace_registry.get(workspace_id)
+    if workspace:
+        return workspace.get('name', workspace_id)
+    return workspace_id
+
+
+def get_workspace_id_from_name(workspace_name: str, exact_match: bool = True) -> str:
+    """
+    Find a workspace ID by its name using the registry.
+    
+    Args:
+        workspace_name: Name of the workspace to search for
+        exact_match: If True, requires exact match (case-insensitive).
+                    If False, matches partial names.
+    
+    Returns:
+        Workspace ID (UUID) if found, empty string otherwise
+        
+    Raises:
+        Exception: If multiple workspaces match the name
+    """
+    if not _registries_loaded:
+        load_registries()
+    
+    matches = []
+    search_name = workspace_name.lower()
+    
+    for ws_id, ws in _workspace_registry.items():
+        ws_name = ws.get('name', '').lower()
+        
+        if exact_match:
+            if ws_name == search_name:
+                matches.append((ws_id, ws.get('name', '')))
+        else:
+            if search_name in ws_name:
+                matches.append((ws_id, ws.get('name', '')))
+    
+    if not matches:
+        return ''
+    
+    if len(matches) > 1:
+        match_list = '\n'.join([f"  - {name} ({id})" for id, name in matches])
+        raise Exception(f"Multiple workspaces found matching '{workspace_name}':\n{match_list}\nPlease use the exact workspace ID instead.")
+    
+    return matches[0][0]
 
 
 def get_user_role(user_id: str) -> str:
@@ -1190,3 +1274,133 @@ def build_user_access_mappings(verify_ssl: bool = True) -> dict:
         'all_workspaces': all_workspaces,
         'full_hierarchy': full_hierarchy
     }
+
+
+def get_extension_app_id(extension_type: str, verify_ssl: bool = True) -> Optional[str]:
+    """
+    Fetch the app ID for a given extension type.
+    
+    Args:
+        extension_type: Type of extension (e.g., 'okr', 'objectives')
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        App ID if found, None otherwise
+    """
+    try:
+        response = make_api_request(
+            f'/api/workspaces/extensions/apps/{extension_type}/list',
+            method='GET',
+            verify_ssl=verify_ssl
+        )
+        items = response.get('items', [])
+        if items:
+            return items[0]['id']
+        return None
+    except Exception as e:
+        raise Exception(f"Failed to fetch extension app ID for type '{extension_type}': {e}")
+
+
+def install_workspace_extension(
+    app_id: str,
+    workspace_id: str,
+    extension_type: str,
+    objective_workspace_ids: Optional[list] = None,
+    verify_ssl: bool = True
+) -> Dict[str, Any]:
+    """
+    Install an extension on a single workspace and optionally link objective workspaces.
+    
+    Args:
+        app_id: The extension/app ID
+        workspace_id: The workspace to install the extension on
+        extension_type: Type of extension (e.g., 'okr')
+        objective_workspace_ids: Optional list of objective workspace IDs to link (for OKR app)
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        API response dictionary
+    
+    Raises:
+        Exception: If the API call fails
+    """
+    endpoint = f'/api/workspaces/extensions/apps/{extension_type}/{app_id}/linked-workspaces/{workspace_id}/objective-workspaces'
+    
+    # If no objective workspaces specified, send empty array
+    request_body = objective_workspace_ids if objective_workspace_ids else []
+    
+    try:
+        response = make_api_request(
+            endpoint,
+            method='POST',
+            data=request_body,
+            verify_ssl=verify_ssl
+        )
+        return response
+    except Exception as e:
+        raise Exception(f"Failed to install extension on workspace: {e}")
+
+
+def get_workspaces_in_folder(folder_name: str, verify_ssl: bool = True) -> list:
+    """
+    Get all workspaces within a specified folder by name.
+    
+    Args:
+        folder_name: Name of the folder to search for
+        verify_ssl: Whether to verify SSL certificates (default: True)
+    
+    Returns:
+        List of workspace dictionaries within the folder
+    
+    Raises:
+        Exception: If folder not found or API call fails
+    """
+    # Fetch all workspaces
+    all_workspaces = []
+    offset = 0
+    limit = 100
+    
+    while True:
+        response = make_api_request(
+            '/api/workspaces/search',
+            method='POST',
+            data={},
+            params={'offset': offset, 'limit': limit},
+            verify_ssl=verify_ssl
+        )
+        items = response.get('items', [])
+        all_workspaces.extend(items)
+        total_items = response.get('totalItems', 0)
+        if offset + limit >= total_items:
+            break
+        offset += limit
+    
+    # Build folder hierarchy
+    hierarchy = build_folder_hierarchy(all_workspaces, verify_ssl=verify_ssl)
+    folder_map = hierarchy.get('folder_map', {})
+    
+    # Find the folder by name
+    target_folder_id = None
+    target_folder = None
+    for folder_id, folder_data in folder_map.items():
+        if folder_data.get('name', '').lower() == folder_name.lower():
+            target_folder_id = folder_id
+            target_folder = folder_data
+            break
+    
+    if not target_folder_id:
+        raise Exception(f"Folder '{folder_name}' not found")
+    
+    # Collect all workspaces in the folder
+    workspaces_in_folder = []
+    embedded = target_folder.get('_embedded', {})
+    folder_workspaces = embedded.get('workspaces', [])
+    
+    # Map workspace IDs to full workspace objects
+    workspace_map = {ws['id']: ws for ws in all_workspaces}
+    for ws_ref in folder_workspaces:
+        ws_id = ws_ref['id']
+        if ws_id in workspace_map:
+            workspaces_in_folder.append(workspace_map[ws_id])
+    
+    return workspaces_in_folder

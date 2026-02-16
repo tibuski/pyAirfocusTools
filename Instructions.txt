@@ -291,3 +291,65 @@ Display a clear summary showing:
 
 **Step 2: Documentation**
 - Update the `README.md`.
+
+### Seventh TASK: Workspace Extension Management
+**Step 1: Create Tool `set_workspace_extension.py`**
+- **Objective:** Add an extension (app) to multiple workspaces within a specified workspace folder. This tool automates the process of linking an extension to all workspaces in a folder structure.
+- **Functionality:**
+  - Install/link a specified extension (by app ID) to all workspaces within a given folder
+  - Support for linking objective workspaces (OKR app specific use case)
+  - Display list of target workspaces before proceeding
+  - Interactive confirmation before making changes
+  - Progress tracking during batch operations
+- **Arguments:**
+  - `--folder FOLDER_NAME` (required): The name of the workspace folder containing target workspaces.
+  - `--extension-type TYPE` (required): The type of extension. Available types discovered via GET /api/workspaces/extensions/apps:
+    * `portfolio` - Portfolio management
+    * `prioritization` - Priority scoring/ranking
+    * `portal` - Portal functionality
+    * `insights` - Analytics/reporting
+    * `okr` - OKR/Objectives (tested and confirmed working)
+      **IMPORTANT:** OKR extension REQUIRES at least one objective workspace ID. The extension cannot be enabled without linking to at least one objective workspace.
+    * `forms` - Forms functionality
+    * `mirror` - Mirror/sync features
+    * `capacity-planning` - Capacity planning
+    * `voting` - Voting features
+    * `health-check-ins` - Health check-ins
+    * Note: Only 'okr' has been fully tested. Other types may have different endpoint patterns.
+  - `--app-id APP_ID` (optional): The ID of the extension/app to install. If not provided, will be auto-fetched from the extension type.
+  - `--objective-workspaces WORKSPACE_IDS` (conditionally required): Comma-separated list of objective workspace IDs to link. **REQUIRED for OKR extension type** (at least one must be specified). Optional for other extension types.
+  - `--no-verify-ssl` (optional): Ignore SSL certificate verification errors.
+  - `--debug` (optional): Enable debug mode to show detailed API requests and responses.
+- **Logic:**
+  1. Load config and pre-fetch registries as per standard pattern.
+  2. Validate that for OKR extension type, at least one objective workspace ID is provided (required by Airfocus API).
+  3. If `--app-id` is not provided, auto-fetch the app ID from the extension type using `get_extension_app_id()`.
+  4. Validate that the specified folder exists using the folder hierarchy functions from `utils.py`.
+  5. Retrieve all workspaces within the specified folder using `build_folder_hierarchy()`.
+  6. Display the list of target workspaces (by name, not ID) and the extension to be installed.
+  7. If `--objective-workspaces` is provided, display the objective workspace names as well.
+  8. Prompt user for confirmation before proceeding.
+  9. For each workspace in the folder:
+     - Call the extension installation API endpoint
+     - Link the specified objective workspaces (required for OKR)
+     - Track success/failure for each workspace
+     - Display progress (e.g., "Processing workspace 3/15...")
+     - In debug mode, show full API requests and responses
+  10. Display final summary: total workspaces processed, successful installations, failures (with details).
+- **API Understanding (based on vendor example):**
+  - **List All Extension Types:** `GET /api/workspaces/extensions/apps` returns array of available extension types (e.g., [{typeId: "okr"}, {typeId: "portfolio"}, ...])
+  - **Get App ID:** `GET /api/workspaces/extensions/apps/{extension-type}/list` returns available apps for a specific type
+  - **Link Extension:** `POST /api/workspaces/extensions/apps/{extension-type}/{app-id}/linked-workspaces/{workspace-id}/objective-workspaces`
+    * Request body: JSON array of objective workspace IDs (e.g., `["ws-id-1", "ws-id-2"]`)
+    * For non-OKR extensions, adapt the endpoint pattern accordingly
+    * Warning: Only tested with 'okr' extension type. Other types may use different endpoint structures.
+  - The endpoint pattern may vary by extension type - the tool should construct the URL dynamically based on `--extension-type`
+- **Implementation Details:**
+  - **Folder Resolution:** Use existing `build_folder_hierarchy()` function to find folder by name and extract all workspaces
+  - **Workspace Collection:** Collect all workspace IDs within the target folder (recursive if folder contains sub-folders)
+  - **API Functions in utils.py:** 
+    * `get_extension_app_id(extension_type)` - Fetch app ID for a given extension type
+    * `install_workspace_extension(app_id, workspace_id, extension_type, objective_workspace_ids=None)` - Install extension on single workspace
+    * Both functions should support the `--no-verify-ssl` flag
+  - **Error Handling:** 
+    * Gracefully handle API errors for individual workspaces (don't stop

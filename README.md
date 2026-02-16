@@ -304,6 +304,97 @@ uv run python set_field_options.py --field <FIELD_NAME> --no-verify-ssl
 - Summary of actions taken (options fetched, options added, options reordered, file written)
 - File saved to `field_[fieldname]_options.txt` (field name without spaces)
 
+### set_workspace_extension.py
+
+Install an extension (app) to all workspaces within a specified folder. Automates the process of linking extensions and objective workspaces for batch operations.
+
+```bash
+# Auto-fetch app ID from extension type (OKR requires objective workspaces)
+uv run python set_workspace_extension.py --folder "Folder Name" --extension-type okr --objective-workspaces "workspace-id-1,workspace-id-2"
+
+# With explicit app ID (optional)
+uv run python set_workspace_extension.py --app-id APP_ID --folder "Folder Name" --extension-type okr --objective-workspaces "workspace-id"
+
+# Multiple objective workspaces for OKR
+uv run python set_workspace_extension.py --folder "Q1 KRs" --extension-type okr --objective-workspaces "obj-ws-1,obj-ws-2,obj-ws-3"
+
+# Without SSL verification
+uv run python set_workspace_extension.py --folder "Folder Name" --extension-type okr --objective-workspaces "workspace-id" --no-verify-ssl
+```
+
+**Required Arguments:**
+- `--folder`: The name of the workspace folder containing target workspaces
+- `--extension-type`: The type of extension. Available types (discovered via `GET /api/workspaces/extensions/apps`):
+  * `portfolio` - Portfolio management
+  * `prioritization` - Priority scoring/ranking
+  * `portal` - Portal functionality
+  * `insights` - Analytics/reporting
+  * `okr` - OKR/Objectives (**tested and confirmed working**)
+    - **REQUIRES** at least one objective workspace ID via `--objective-workspaces`
+    - Cannot be enabled with zero objective workspaces
+  * `forms` - Forms functionality
+  * `mirror` - Mirror/sync features
+  * `capacity-planning` - Capacity planning
+  * `voting` - Voting features
+  * `health-check-ins` - Health check-ins
+  * **Note:** Only `okr` has been fully tested. Other extension types may have different endpoint patterns or behaviors.
+
+**Optional Arguments:**
+- `--app-id`: The ID of the extension/app to install. If not provided, will be auto-fetched from the extension type.
+- `--objective-workspaces`: Comma-separated list of objective workspace IDs to link. **REQUIRED for OKR extension** (at least one must be specified). Optional for other extension types.
+- `--no-verify-ssl`: Disable SSL certificate verification
+- `--debug`: Enable debug mode to show detailed API requests and responses
+
+**Functionality:**
+- Fetches all workspaces within the specified folder
+- Displays target workspaces and extension details before proceeding
+- Shows objective workspaces to be linked (if specified)
+- Prompts for confirmation before making changes
+- Processes each workspace with real-time progress feedback
+- Continues processing even if individual workspaces fail
+- Displays final summary with success/failure counts and error details
+
+**Process:**
+1. Load registries and validate inputs
+2. Auto-fetch app ID from extension type (if not provided explicitly)
+3. Fetch all workspaces in the specified folder
+4. Display summary of planned actions
+5. Request user confirmation
+6. Install extension on each workspace sequentially
+7. Link objective workspaces (if specified)
+8. Track and report success/failures with detailed error messages
+
+**Output Format:**
+- Header with extension type, app ID, and target folder
+- List of target workspaces by name
+- List of objective workspaces (if applicable)
+- Real-time progress: `[n/total] Processing: Workspace Name`
+- Success indicator: ✓ Success
+- Failure indicator: ✗ Failed: error message
+- Final summary with total processed, successful, and failed counts
+- Detailed error report for all failures
+
+**Error Handling:**
+- Gracefully handles API errors for individual workspaces
+- Continues processing remaining workspaces if one fails
+- Provides detailed error messages for troubleshooting
+- Exits with error code if any installations fail
+
+**Use Cases:**
+- Bulk OKR app installation across team workspaces
+- Linking multiple key result workspaces to objective workspaces
+- Setting up extensions for new workspace folders
+
+**Notes:**
+- Extension endpoints are not documented in openapi.json
+- Based on vendor-provided example code
+- **Only the `okr` extension type has been tested** - other types may require different endpoint patterns
+- **OKR extension requires at least one objective workspace** - the extension cannot be enabled with an empty objective workspace list
+- Available extension types can be discovered via `GET /api/workspaces/extensions/apps`
+- Workspaces are processed sequentially to avoid rate limiting
+- All workspace names are resolved from IDs for clear output
+- Use `--debug` flag to see detailed API requests/responses for troubleshooting
+
 ## Architecture
 
 **`utils.py`** - Core library:
@@ -333,6 +424,9 @@ uv run python set_field_options.py --field <FIELD_NAME> --no-verify-ssl
 - `add_field_options()`: Add new options to a field (preserves existing option IDs)
 - `reorder_field_options()`: Reorder field options (preserves all option IDs)
 - `supports_field_options()`: Check if field type supports options
+- `get_extension_app_id()`: Fetch app ID for a given extension type
+- `install_workspace_extension()`: Install extension on a single workspace with optional objective workspace linking
+- `get_workspaces_in_folder()`: Get all workspaces within a specified folder by name
 - `colorize()`: ANSI color formatting
 
 **`config`** - Configuration file (key = value format)
@@ -352,6 +446,7 @@ uv run python set_field_options.py --field <FIELD_NAME> --no-verify-ssl
 | `set_role.py` | Set role (editor or contributor) for group members (protects admins) |
 | `get_license_usage.py` | Analyze license usage across OKR and Product Management groups |
 | `set_field_options.py` | Manage custom field options for Airfocus fields via CLI |
+| `set_workspace_extension.py` | Install extensions (apps) to all workspaces within a specified folder |
 
 ## Security
 
