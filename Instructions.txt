@@ -85,9 +85,9 @@ Please initialize the project and create the first tool.
   - **Filter Me:** Exclude the current authenticated user's access line.
   - **Visual:** Use global hierarchy functions from `utils.py`.
   - **Coloring Rules (All apply):**
-    1. **Workspace Names:** Always appear in their designated color (yellow, orange, great=green, blue). If any rule below applies, append " (Wrong)" in RED after the colored workspace name.
+    1. **Workspace Names:** Always appear in their designated color (yellow, orange, great=green, blue, purple). If any rule below applies, append " (Wrong)" in RED after the colored workspace name.
     
-    2. **Invalid Color:** If color field is not one of {yellow, orange, great, blue} or is empty, the entire color line appears in RED with " (Wrong)".
+    2. **Invalid Color:** If color field is not one of {yellow, orange, great, blue, purple} or is empty, the entire color line appears in RED with " (Wrong)".
     
     3. **Invalid Item-Key:** If Item-Key is empty or does not start with 'OKR', display the line in workspace color with " (Wrong)" appended in RED.
     

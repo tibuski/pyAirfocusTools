@@ -115,6 +115,7 @@ WORKSPACE_COLOR_MAPPING = {
     "orange": "orange",
     "great": "green",
     "blue": "blue",
+    "purple": "magenta",
 }
 
 

@@ -80,7 +80,7 @@ def format_workspace_access(
     detail_indent = ".." * (depth + 1)
 
     # First: Color - If invalid color, entire line in RED. Otherwise workspace color.
-    valid_colors = ["yellow", "orange", "great", "blue"]
+    valid_colors = ["yellow", "orange", "great", "blue", "purple"]
     color_line = f"{detail_indent}Color: {item_color if item_color else '(empty)'}"
     is_red = not item_color or item_color not in valid_colors
     if is_red:

@@ -81,15 +81,16 @@ uv run python get_okr_compliance.py --no-verify-ssl
 - Direct user access: Line shown in workspace color + " (Wrong)" in RED
 - Default permission ≠ 'Comment': Line shown in workspace color + " (Wrong)" in RED
 - Item Key not starting with 'OKR' or empty: Line shown in workspace color + " (Wrong)" in RED
-- Color invalid (not in {yellow, orange, great, blue} or empty): Entire line " (Wrong)" in RED
+- Color invalid (not in {yellow, orange, great, blue, purple} or empty): Entire line " (Wrong)" in RED
 - Groups not starting with 'SP_OKR_' (except "Airfocus Admins"): Line shown in workspace color + " (Wrong)" in RED
 - Groups ending with '_F' without 'Full' access: Line shown in workspace color + " (Wrong)" in RED
 - Groups ending with '_W' without 'Write' access: Line shown in workspace color + " (Wrong)" in RED
 - Workspace names: Shown in their designated color + " (Wrong)" in RED appended if any rule above applies
 
 **Color Display:**
-- Workspace names and their details appear in designated color (yellow/orange/green/blue)
-- Color mapping: yellow → yellow, orange → orange, great → green, blue → blue
+- Workspace names and their details appear in designated color (yellow/orange/green/blue/purple)
+- Color mapping: yellow 
+- Color mapping: yellow → yellow, orange → orange, great → green, blue → blue, purple → purple
 - Invalid items have " (Wrong)" appended in RED after the colored text
 
 ### get_prodmgt_compliance.py
