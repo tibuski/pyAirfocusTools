@@ -7,3 +7,7 @@ apikey = your_api_key_here
 # API Base URL
 baseurl = https://app.airfocus.com
 
+# License pool totals
+prodmgt_license_total = 250
+okr_license_total = 350
+

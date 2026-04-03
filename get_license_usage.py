@@ -16,6 +16,7 @@ import sys
 from typing import Dict, Set
 
 from utils import (
+    load_config,
     load_registries,
     get_team_info,
     get_unique_members_by_prefix,
@@ -39,6 +40,10 @@ def analyze_license_usage(verify_ssl: bool = True, debug: bool = False) -> Dict[
     """
     # Load registries (users and groups)
     load_registries(verify_ssl=verify_ssl)
+    config = load_config()
+
+    okr_license_total = int(config.get('okr_license_total', 0) or 0)
+    prodmgt_license_total = int(config.get('prodmgt_license_total', 0) or 0)
     
     # Get team info with license seat data
     team_info = get_team_info(verify_ssl=verify_ssl)
@@ -103,6 +108,8 @@ def analyze_license_usage(verify_ssl: bool = True, debug: bool = False) -> Dict[
     
     return {
         'seats': seats,
+        'okr_license_total': okr_license_total,
+        'prodmgt_license_total': prodmgt_license_total,
         'admin_count': admin_count,
         'okr_count': len(okr_users),
         'prodmgt_count': len(prodmgt_users),
@@ -139,9 +146,11 @@ def display_license_summary(analysis: Dict[str, any]):
     print(f"  Editors not in SP_OKR/SP_ProdMgt:                      {analysis['editors_not_in_groups_count']:>6}")
     
     print(colorize("\nEffective License Usage:", 'green'))
-    print(f"  OKR Licenses:                                          {analysis['okr_only_count']:>6}")
+    okr_display = f"{analysis['okr_only_count']}/{analysis['okr_license_total']}" if analysis['okr_license_total'] else str(analysis['okr_only_count'])
+    print(f"  OKR Licenses:                                 {okr_display:>15}")
     prodmgt_licenses = analysis['prodmgt_count'] + analysis['editors_not_in_groups_count']
-    print(f"  PrdMgt Licenses:                                       {prodmgt_licenses:>6}")
+    prodmgt_display = f"{prodmgt_licenses}/{analysis['prodmgt_license_total']}" if analysis['prodmgt_license_total'] else str(prodmgt_licenses)
+    print(f"  PrdMgt Licenses:                              {prodmgt_display:>15}")
     print(f"  Total Unique Users:                                    {analysis['effective_count']:>6}")
     print(f"    ({analysis['admin_count']} Admin + {analysis['okr_only_count']} OKR + {prodmgt_licenses} ProdMgt)")
     
